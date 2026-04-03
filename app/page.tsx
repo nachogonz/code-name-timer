@@ -62,14 +62,6 @@ function IconPause() {
   );
 }
 
-function IconStop() {
-  return (
-    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M6 6h12v12H6z" />
-    </svg>
-  );
-}
-
 /** Finish turn (swap) */
 function IconFinishTurn() {
   return (
@@ -112,23 +104,23 @@ function IconCheck() {
 
 type VoiceAction = "start" | "finish" | "stop" | "resume" | "reset" | "skip_pregame";
 
-function parseVoiceTranscript(text: string, opts: { interimOnlyUrgent: boolean }): VoiceAction | null {
+function parseVoiceTranscript(text: string): VoiceAction | null {
   const t = text.toLowerCase().replace(/\s+/g, " ").trim();
   if (!t) return null;
 
-  if (opts.interimOnlyUrgent) {
-    if (/\b(restart|start over|begin again|reset|clear)\b/.test(t)) return "reset";
-    if (/\b(stop|pause|hold)\b/.test(t)) return "stop";
-    return null;
-  }
-
+  // Longer phrases first (avoid matching "start" inside "restart")
   if (/\b(restart|start over|begin again)\b/.test(t)) return "reset";
   if (/\b(reset|clear)\b/.test(t)) return "reset";
   if (/\b(stop|pause|hold)\b/.test(t)) return "stop";
   if (/\b(resume|continue)\b/.test(t)) return "resume";
   if (/\b(finish|switch|next|done)\b/.test(t)) return "finish";
   if (/\bskip\b/.test(t)) return "skip_pregame";
-  if (/\b(start|begin)\b/.test(t)) return "start";
+  if (/\b(start|begin|go)\b/.test(t)) return "start";
+
+  const words = t.split(/\s+/).filter(Boolean);
+  const lastWord = words[words.length - 1];
+  if (lastWord === "start" || lastWord === "begin") return "start";
+  if (lastWord === "finish" || lastWord === "switch" || lastWord === "done") return "finish";
 
   return null;
 }
@@ -152,6 +144,16 @@ export default function Page() {
   const lastVoiceFireRef = useRef<{ action: VoiceAction; at: number } | null>(null);
   const processVoiceRef = useRef<(transcript: string, isFinal: boolean) => void>(() => {});
   const pregameEndAnnouncedRef = useRef(false);
+  const pregameMarksAnnouncedRef = useRef<Set<number>>(new Set());
+  const turnMarksAnnouncedRef = useRef<Set<number>>(new Set());
+  const handlersRef = useRef({
+    startGame: () => {},
+    stopGame: () => {},
+    resumeGame: () => {},
+    finishTurn: () => {},
+    resetGame: () => {},
+    skipPregame: () => {},
+  });
 
   const teamName = useCallback(
     (team: Team) => (team === "A" ? teamAName.trim() || DEFAULT_A : teamBName.trim() || DEFAULT_B),
@@ -176,22 +178,25 @@ export default function Page() {
     }
   }, [state]);
 
-  const speak = useCallback((text: string) => {
+  const speak = useCallback((text: string, mode: "replace" | "queue" = "replace") => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    if (mode === "replace") window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1;
+    window.speechSynthesis.speak(u);
   }, []);
 
   const pushLog = useCallback(
     (message: string, say = false) => {
       setLog(message);
-      if (say) speak(message);
+      if (say) speak(message, "replace");
     },
     [speak]
   );
 
   const endGame = useCallback(
     (timedOut: Team) => {
+      turnMarksAnnouncedRef.current = new Set();
       setState("ended");
       lastTickRef.current = null;
       const loser = teamName(timedOut);
@@ -245,16 +250,43 @@ export default function Page() {
     if (state !== "pregame" || pregameRemaining > 0) return;
     if (pregameEndAnnouncedRef.current) return;
     pregameEndAnnouncedRef.current = true;
+    turnMarksAnnouncedRef.current = new Set();
     setCurrentTeam("A");
     setState("running");
     lastTickRef.current = performance.now();
     pushLog(`Thinking time over. ${teamName("A")} to play.`, true);
   }, [state, pregameRemaining, pushLog, teamName]);
 
+  useEffect(() => {
+    if (state !== "pregame") return;
+    const sec = Math.ceil(pregameRemaining);
+    const marks = [60, 30, 10, 5];
+    for (const mark of marks) {
+      if (sec === mark && !pregameMarksAnnouncedRef.current.has(mark)) {
+        pregameMarksAnnouncedRef.current.add(mark);
+        speak(`Pre-game. ${mark} seconds remaining.`, "queue");
+      }
+    }
+  }, [state, pregameRemaining, speak]);
+
+  useEffect(() => {
+    if (state !== "running") return;
+    const t = currentTeam === "A" ? timeA : timeB;
+    const sec = Math.ceil(t);
+    const marks = [60, 30, 10, 5];
+    for (const mark of marks) {
+      if (sec === mark && !turnMarksAnnouncedRef.current.has(mark)) {
+        turnMarksAnnouncedRef.current.add(mark);
+        speak(`${teamName(currentTeam)}. ${mark} seconds left.`, "queue");
+      }
+    }
+  }, [state, currentTeam, timeA, timeB, teamName, speak]);
+
   const startGame = useCallback(() => {
     if (state === "ended") return;
     if (state === "idle") {
       pregameEndAnnouncedRef.current = false;
+      pregameMarksAnnouncedRef.current = new Set();
       setPregameRemaining(PREGAME_SECONDS);
       setState("pregame");
       lastTickRef.current = performance.now();
@@ -264,7 +296,7 @@ export default function Page() {
     if (state === "pregame_paused") {
       setState("pregame");
       lastTickRef.current = performance.now();
-      pushLog("Pre-game resumed.", false);
+      pushLog("Pre-game resumed.", true);
       return;
     }
     if (state === "paused") {
@@ -286,7 +318,7 @@ export default function Page() {
       updatePregameTime();
       setState("pregame_paused");
       lastTickRef.current = null;
-      pushLog("Pre-game paused.", false);
+      pushLog("Pre-game paused.", true);
     }
   }, [state, currentTeam, pushLog, updateRunningTime, updatePregameTime]);
 
@@ -300,12 +332,13 @@ export default function Page() {
     if (state === "pregame_paused") {
       setState("pregame");
       lastTickRef.current = performance.now();
-      pushLog("Pre-game resumed.", false);
+      pushLog("Pre-game resumed.", true);
     }
   }, [state, currentTeam, pushLog]);
 
   const skipPregame = useCallback(() => {
     if (state !== "pregame" && state !== "pregame_paused") return;
+    turnMarksAnnouncedRef.current = new Set();
     lastTickRef.current = performance.now();
     setCurrentTeam("A");
     setState("running");
@@ -315,6 +348,7 @@ export default function Page() {
   const finishTurn = useCallback(() => {
     if (state === "ended" || state === "idle" || state === "pregame" || state === "pregame_paused") return;
     if (state === "running") updateRunningTime();
+    turnMarksAnnouncedRef.current = new Set();
     const total = Math.max(1, minutes * 60 + seconds);
     setTimeA(total);
     setTimeB(total);
@@ -331,6 +365,8 @@ export default function Page() {
     setTimeB(total);
     setPregameRemaining(PREGAME_SECONDS);
     pregameEndAnnouncedRef.current = false;
+    pregameMarksAnnouncedRef.current = new Set();
+    turnMarksAnnouncedRef.current = new Set();
     setCurrentTeam("A");
     setState("idle");
     lastTickRef.current = null;
@@ -343,6 +379,8 @@ export default function Page() {
     setTimeB(total);
     setPregameRemaining(PREGAME_SECONDS);
     pregameEndAnnouncedRef.current = false;
+    pregameMarksAnnouncedRef.current = new Set();
+    turnMarksAnnouncedRef.current = new Set();
     setCurrentTeam("A");
     setState("idle");
     lastTickRef.current = null;
@@ -352,54 +390,56 @@ export default function Page() {
   const shouldThrottleVoice = useCallback((action: VoiceAction) => {
     const now = Date.now();
     const last = lastVoiceFireRef.current;
-    const windowMs = action === "finish" ? 600 : 450;
+    const windowMs =
+      action === "finish" ? 700 : action === "start" ? 550 : action === "reset" ? 500 : 450;
     if (last && last.action === action && now - last.at < windowMs) return true;
     lastVoiceFireRef.current = { action, at: now };
     return false;
   }, []);
 
-  const dispatchVoiceAction = useCallback(
-    (action: VoiceAction) => {
-      if (shouldThrottleVoice(action)) return;
-      switch (action) {
-        case "start":
-          if (state === "idle") startGame();
-          else if (state === "pregame_paused" || state === "paused") resumeGame();
-          break;
-        case "finish":
-          finishTurn();
-          break;
-        case "stop":
-          stopGame();
-          break;
-        case "resume":
-          resumeGame();
-          break;
-        case "reset":
-          resetGame();
-          break;
-        case "skip_pregame":
-          skipPregame();
-          break;
-        default:
-          break;
-      }
-    },
-    [state, shouldThrottleVoice, startGame, resumeGame, finishTurn, stopGame, resetGame, skipPregame]
-  );
+  handlersRef.current = {
+    startGame,
+    stopGame,
+    resumeGame,
+    finishTurn,
+    resetGame,
+    skipPregame,
+  };
+
+  const dispatchVoiceAction = useCallback((action: VoiceAction) => {
+    if (shouldThrottleVoice(action)) return;
+    const h = handlersRef.current;
+    switch (action) {
+      case "start":
+        h.startGame();
+        break;
+      case "finish":
+        h.finishTurn();
+        break;
+      case "stop":
+        h.stopGame();
+        break;
+      case "resume":
+        h.resumeGame();
+        break;
+      case "reset":
+        h.resetGame();
+        break;
+      case "skip_pregame":
+        h.skipPregame();
+        break;
+      default:
+        break;
+    }
+  }, [shouldThrottleVoice]);
 
   const processRecognitionResult = useCallback(
     (transcript: string, isFinal: boolean) => {
-      const interimOnlyUrgent = !isFinal;
-      const action = parseVoiceTranscript(transcript, { interimOnlyUrgent });
+      const action = parseVoiceTranscript(transcript);
       if (!action) {
         if (isFinal && transcript.trim().length > 0)
           setLog(`Heard: "${transcript.trim()}" — no command matched.`);
         return;
-      }
-      if (interimOnlyUrgent) {
-        const urgent: VoiceAction[] = ["stop", "reset"];
-        if (!urgent.includes(action)) return;
       }
       dispatchVoiceAction(action);
     },
@@ -421,11 +461,12 @@ export default function Page() {
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const transcript = result[0]?.transcript ?? "";
-        processVoiceRef.current(transcript, result.isFinal);
+      let combined = "";
+      for (let i = 0; i < event.results.length; i++) {
+        combined += event.results[i][0]?.transcript ?? "";
       }
+      const last = event.results[event.results.length - 1];
+      processVoiceRef.current(combined.trim(), last.isFinal);
     };
 
     recognition.onerror = (event) => {
@@ -468,7 +509,7 @@ export default function Page() {
     if (next) {
       try {
         recognition.start();
-        pushLog("Voice on. Say stop, reset, resume, switch, finish, or skip.");
+        pushLog("Voice on. Say start, pause, finish, reset, or skip.", true);
       } catch {
         setVoiceOn(false);
         listeningRef.current = false;
@@ -514,7 +555,7 @@ export default function Page() {
       <div className="app">
         <div className="card">
           <header className="header">
-            <h1 className="title">Code-Name voice timer</h1>
+            <h1 className="title">Skip-Bo voice timer</h1>
             <div className="status-row" role="status" aria-live="polite">
               <span className="chip">
                 <strong>{phaseLabel}</strong>
