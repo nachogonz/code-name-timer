@@ -514,7 +514,7 @@ export default function Page() {
       <div className="app">
         <div className="card">
           <header className="header">
-            <h1 className="title">Skip-Bo voice timer</h1>
+            <h1 className="title">Code-Name voice timer</h1>
             <div className="status-row" role="status" aria-live="polite">
               <span className="chip">
                 <strong>{phaseLabel}</strong>
