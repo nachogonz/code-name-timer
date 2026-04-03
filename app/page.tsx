@@ -632,120 +632,119 @@ export default function Page() {
     <main className="page">
       <div className="app">
         <div className="card">
-          <header className="header">
-            <h1 className="title">Skip-Bo voice timer</h1>
-            <div className="status-row" role="status" aria-live="polite">
-              <span className="chip">
-                <strong>{phaseLabel}</strong>
-                <span aria-hidden> · </span>
-                {teamName(currentTeam)}
-              </span>
-              {voiceOn ? (
-                <span className="chip" style={{ borderColor: "rgba(52, 211, 153, 0.35)" }}>
-                  <strong style={{ color: "#6ee7b7" }}>Listening</strong>
+          <div className="card-body">
+            <header className="header">
+              <h1 className="title">Code-Name voice timer</h1>
+              <div className="status-row" role="status" aria-live="polite">
+                <span className="chip">
+                  <strong>{phaseLabel}</strong>
+                  <span aria-hidden> · </span>
+                  {teamName(currentTeam)}
                 </span>
-              ) : null}
-            </div>
-            <div className="settings">
-              <div className="setting">
-                <label htmlFor="min">Minutes</label>
-                <input
-                  id="min"
-                  type="number"
-                  min={0}
-                  max={99}
-                  inputMode="numeric"
-                  value={minutes}
-                  onChange={(e) => setMinutes(Number(e.target.value) || 0)}
-                />
+                {voiceOn ? (
+                  <span className="chip chip-listening">
+                    <strong>Listening</strong>
+                  </span>
+                ) : null}
               </div>
-              <div className="setting">
-                <label htmlFor="sec">Seconds</label>
-                <input
-                  id="sec"
-                  type="number"
-                  min={0}
-                  max={59}
-                  inputMode="numeric"
-                  value={seconds}
-                  onChange={(e) => setSeconds(Math.min(59, Math.max(0, Number(e.target.value) || 0)))}
-                />
+              <div className="settings">
+                <div className="setting">
+                  <label htmlFor="min">Minutes</label>
+                  <input
+                    id="min"
+                    type="number"
+                    min={0}
+                    max={99}
+                    inputMode="numeric"
+                    value={minutes}
+                    onChange={(e) => setMinutes(Number(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="setting">
+                  <label htmlFor="sec">Seconds</label>
+                  <input
+                    id="sec"
+                    type="number"
+                    min={0}
+                    max={59}
+                    inputMode="numeric"
+                    value={seconds}
+                    onChange={(e) => setSeconds(Math.min(59, Math.max(0, Number(e.target.value) || 0)))}
+                  />
+                </div>
+                <button type="button" className="btn-apply" onClick={applyTime} aria-label="Apply">
+                  <IconCheck />
+                  <span className="btn-word">Apply</span>
+                </button>
               </div>
-              <button type="button" className="btn-apply" onClick={applyTime} aria-label="Apply">
-                <IconCheck />
-                <span className="btn-word">Apply</span>
-              </button>
-            </div>
-           
-          </header>
+            </header>
 
-          {(state === "pregame" || state === "pregame_paused") && (
-            <div className="pregame-banner" aria-live="polite">
-              <div className="pregame-label">Pre-game thinking</div>
-              <div className="pregame-clock">{formatTime(pregameRemaining)}</div>
-              <div className="pregame-hint">
-                {state === "pregame_paused"
-                  ? "Paused — resume when ready. Tap Finish to start play."
-                  : "Tap Finish to begin play, or wait for the countdown."}
+            {(state === "pregame" || state === "pregame_paused") && (
+              <div className="pregame-banner" aria-live="polite">
+                <div className="pregame-label">Pre-game thinking</div>
+                <div className="pregame-clock">{formatTime(pregameRemaining)}</div>
+                <div className="pregame-hint">
+                  {state === "pregame_paused"
+                    ? "Paused — resume when ready. Tap Finish to start play."
+                    : "Tap Finish to begin play, or wait for the countdown."}
+                </div>
               </div>
+            )}
+
+            <div className="teams">
+              <section className={`team ${currentTeam === "A" ? "active" : ""}`} aria-label={teamName("A")}>
+                <div className="team-head">
+                  <input
+                    className="team-name-input"
+                    value={teamAName}
+                    onChange={(e) => setTeamAName(e.target.value)}
+                    aria-label="First team name"
+                    autoComplete="off"
+                  />
+                  <span className={`badge ${currentTeam === "A" ? "on" : "wait"}`}>
+                    {currentTeam === "A" ? (state === "running" ? "Playing" : "Turn") : "Waiting"}
+                  </span>
+                </div>
+                <div className="clock">{formatTime(timeA)}</div>
+                <div className="subtext">
+                  {state === "ended" && timeA === 0
+                    ? "Time up"
+                    : currentTeam === "A" && state === "running"
+                      ? "Clock running"
+                      : currentTeam === "A" && state === "paused"
+                        ? "Paused"
+                        : "Ready"}
+                </div>
+              </section>
+
+              <section className={`team ${currentTeam === "B" ? "active" : ""}`} aria-label={teamName("B")}>
+                <div className="team-head">
+                  <input
+                    className="team-name-input"
+                    value={teamBName}
+                    onChange={(e) => setTeamBName(e.target.value)}
+                    aria-label="Second team name"
+                    autoComplete="off"
+                  />
+                  <span className={`badge ${currentTeam === "B" ? "on" : "wait"}`}>
+                    {currentTeam === "B" ? (state === "running" ? "Playing" : "Turn") : "Waiting"}
+                  </span>
+                </div>
+                <div className="clock">{formatTime(timeB)}</div>
+                <div className="subtext">
+                  {state === "ended" && timeB === 0
+                    ? "Time up"
+                    : currentTeam === "B" && state === "running"
+                      ? "Clock running"
+                      : currentTeam === "B" && state === "paused"
+                        ? "Paused"
+                        : "Ready"}
+                </div>
+              </section>
             </div>
-          )}
-
-          <div className="teams">
-            <section className={`team ${currentTeam === "A" ? "active" : ""}`} aria-label={teamName("A")}>
-              <div className="team-head">
-                <input
-                  className="team-name-input"
-                  value={teamAName}
-                  onChange={(e) => setTeamAName(e.target.value)}
-                  aria-label="First team name"
-                  autoComplete="off"
-                />
-                <span className={`badge ${currentTeam === "A" ? "on" : "wait"}`}>
-                  {currentTeam === "A" ? (state === "running" ? "Playing" : "Turn") : "Waiting"}
-                </span>
-              </div>
-              <div className="clock">{formatTime(timeA)}</div>
-              <div className="subtext">
-                {state === "ended" && timeA === 0
-                  ? "Time up"
-                  : currentTeam === "A" && state === "running"
-                    ? "Clock running"
-                    : currentTeam === "A" && state === "paused"
-                      ? "Paused"
-                      : "Ready"}
-              </div>
-            </section>
-
-            <section className={`team ${currentTeam === "B" ? "active" : ""}`} aria-label={teamName("B")}>
-              <div className="team-head">
-                <input
-                  className="team-name-input"
-                  value={teamBName}
-                  onChange={(e) => setTeamBName(e.target.value)}
-                  aria-label="Second team name"
-                  autoComplete="off"
-                />
-                <span className={`badge ${currentTeam === "B" ? "on" : "wait"}`}>
-                  {currentTeam === "B" ? (state === "running" ? "Playing" : "Turn") : "Waiting"}
-                </span>
-              </div>
-              <div className="clock">{formatTime(timeB)}</div>
-              <div className="subtext">
-                {state === "ended" && timeB === 0
-                  ? "Time up"
-                  : currentTeam === "B" && state === "running"
-                    ? "Clock running"
-                    : currentTeam === "B" && state === "paused"
-                      ? "Paused"
-                      : "Ready"}
-              </div>
-            </section>
           </div>
 
           <div className="controls">
-          
-
             <div className="button-grid">
               <button
                 type="button"
