@@ -646,6 +646,36 @@ export default function Page() {
                 </span>
               ) : null}
             </div>
+            <div className="settings">
+              <div className="setting">
+                <label htmlFor="min">Minutes</label>
+                <input
+                  id="min"
+                  type="number"
+                  min={0}
+                  max={99}
+                  inputMode="numeric"
+                  value={minutes}
+                  onChange={(e) => setMinutes(Number(e.target.value) || 0)}
+                />
+              </div>
+              <div className="setting">
+                <label htmlFor="sec">Seconds</label>
+                <input
+                  id="sec"
+                  type="number"
+                  min={0}
+                  max={59}
+                  inputMode="numeric"
+                  value={seconds}
+                  onChange={(e) => setSeconds(Math.min(59, Math.max(0, Number(e.target.value) || 0)))}
+                />
+              </div>
+              <button type="button" className="btn-apply" onClick={applyTime} aria-label="Apply">
+                <IconCheck />
+                <span className="btn-word">Apply</span>
+              </button>
+            </div>
            
           </header>
 
