@@ -46,14 +46,71 @@ function formatTime(totalSeconds: number) {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-type VoiceAction =
-  | "start"
-  | "finish"
-  | "stop"
-  | "resume"
-  | "reset"
-  | "status"
-  | "skip_pregame";
+function IconPlay() {
+  return (
+    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+function IconPause() {
+  return (
+    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+    </svg>
+  );
+}
+
+function IconStop() {
+  return (
+    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M6 6h12v12H6z" />
+    </svg>
+  );
+}
+
+/** Finish turn (swap) */
+function IconFinishTurn() {
+  return (
+    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM18 9l-3.99-4v3H10v2h4.01v3L21 9h-3z" />
+    </svg>
+  );
+}
+
+function IconSkipForward() {
+  return (
+    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M6 18l8.5-6L6 6v12zm8-12v12h2V6h-2z" />
+    </svg>
+  );
+}
+
+function IconMic({ muted }: { muted?: boolean }) {
+  if (muted) {
+    return (
+      <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0 .06.02.11.02.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l8.97 8.97L13 16h-2v2h2v2.18l4.01 4.01L22 22.27 4.27 3zM12 19c-3.87 0-7-3.13-7-7v-.18l2 2V12c0 2.76 2.24 5 5 5 .34 0 .67-.03 1-.09l1.56 1.56c-.62.35-1.3.58-2.05.65v2.05c1.45-.02 2.82-.45 4-1.19l1.42 1.42A9.96 9.96 0 0112 23v-2zm5.9-2.09l-1.42-1.41c.36-.76.52-1.61.52-2.5H19c0 1.28-.34 2.5-.95 3.59l1.85 1.85A8.91 8.91 0 0021 12h-2c0 .65-.08 1.29-.23 1.91l2.12 2.12c.92-1.35 1.48-2.97 1.58-4.73h-2.02c-.1 1.1-.45 2.13-.98 3.03z" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.18 15.06 14.37 16.5 12 16.5s-4.18-1.44-4.93-3.65c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.76 3.26 3.47 5.51 6.91 5.86V21h2v-2.08c3.44-.35 6.15-2.6 6.91-5.86.1-.6-.39-1.14-1-1.14z" />
+    </svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+    </svg>
+  );
+}
+
+type VoiceAction = "start" | "finish" | "stop" | "resume" | "reset" | "skip_pregame";
 
 function parseVoiceTranscript(text: string, opts: { interimOnlyUrgent: boolean }): VoiceAction | null {
   const t = text.toLowerCase().replace(/\s+/g, " ").trim();
@@ -70,7 +127,6 @@ function parseVoiceTranscript(text: string, opts: { interimOnlyUrgent: boolean }
   if (/\b(stop|pause|hold)\b/.test(t)) return "stop";
   if (/\b(resume|continue)\b/.test(t)) return "resume";
   if (/\b(finish|switch|next|done)\b/.test(t)) return "finish";
-  if (/\b(status|times?|clock)\b/.test(t)) return "status";
   if (/\bskip\b/.test(t)) return "skip_pregame";
   if (/\b(start|begin)\b/.test(t)) return "start";
 
@@ -259,37 +315,27 @@ export default function Page() {
   const finishTurn = useCallback(() => {
     if (state === "ended" || state === "idle" || state === "pregame" || state === "pregame_paused") return;
     if (state === "running") updateRunningTime();
+    const total = Math.max(1, minutes * 60 + seconds);
+    setTimeA(total);
+    setTimeB(total);
     const nextTeam: Team = currentTeam === "A" ? "B" : "A";
     setCurrentTeam(nextTeam);
     setState("running");
     lastTickRef.current = performance.now();
-    pushLog(`${teamName(nextTeam)} turn.`, true);
-  }, [state, currentTeam, pushLog, updateRunningTime]);
+    pushLog(`${teamName(nextTeam)} turn. Clocks reset.`, true);
+  }, [state, currentTeam, minutes, seconds, pushLog, updateRunningTime, teamName]);
 
-  const resetGame = useCallback(
-    (askConfirm: boolean) => {
-      if (askConfirm && !window.confirm("Reset both clocks and pre-game?")) return;
-      const total = Math.max(1, minutes * 60 + seconds);
-      setTimeA(total);
-      setTimeB(total);
-      setPregameRemaining(PREGAME_SECONDS);
-      pregameEndAnnouncedRef.current = false;
-      setCurrentTeam("A");
-      setState("idle");
-      lastTickRef.current = null;
-      pushLog("Timer reset.", true);
-    },
-    [minutes, seconds, pushLog]
-  );
-
-  const statusReport = useCallback(() => {
-    const pre =
-      state === "pregame" || state === "pregame_paused" ? ` Pre-game ${formatTime(pregameRemaining)}.` : "";
-    pushLog(
-      `${teamName("A")}: ${formatTime(timeA)}. ${teamName("B")}: ${formatTime(timeB)}.${pre} ${teamName(currentTeam)} is up. ${phaseLabel}.`,
-      true
-    );
-  }, [state, pregameRemaining, timeA, timeB, currentTeam, phaseLabel, pushLog, teamName]);
+  const resetGame = useCallback(() => {
+    const total = Math.max(1, minutes * 60 + seconds);
+    setTimeA(total);
+    setTimeB(total);
+    setPregameRemaining(PREGAME_SECONDS);
+    pregameEndAnnouncedRef.current = false;
+    setCurrentTeam("A");
+    setState("idle");
+    lastTickRef.current = null;
+    pushLog("Timer reset.", true);
+  }, [minutes, seconds, pushLog]);
 
   const applyTime = useCallback(() => {
     const total = Math.max(1, minutes * 60 + seconds);
@@ -306,7 +352,7 @@ export default function Page() {
   const shouldThrottleVoice = useCallback((action: VoiceAction) => {
     const now = Date.now();
     const last = lastVoiceFireRef.current;
-    const windowMs = action === "status" ? 1200 : 450;
+    const windowMs = action === "finish" ? 600 : 450;
     if (last && last.action === action && now - last.at < windowMs) return true;
     lastVoiceFireRef.current = { action, at: now };
     return false;
@@ -330,10 +376,7 @@ export default function Page() {
           resumeGame();
           break;
         case "reset":
-          resetGame(false);
-          break;
-        case "status":
-          statusReport();
+          resetGame();
           break;
         case "skip_pregame":
           skipPregame();
@@ -342,7 +385,7 @@ export default function Page() {
           break;
       }
     },
-    [state, shouldThrottleVoice, startGame, resumeGame, finishTurn, stopGame, resetGame, statusReport, skipPregame]
+    [state, shouldThrottleVoice, startGame, resumeGame, finishTurn, stopGame, resetGame, skipPregame]
   );
 
   const processRecognitionResult = useCallback(
@@ -425,7 +468,7 @@ export default function Page() {
     if (next) {
       try {
         recognition.start();
-        pushLog("Voice on. Say stop, reset, restart, resume, switch, status, or skip.");
+        pushLog("Voice on. Say stop, reset, resume, switch, finish, or skip.");
       } catch {
         setVoiceOn(false);
         listeningRef.current = false;
@@ -444,7 +487,7 @@ export default function Page() {
     };
   }, []);
 
-  const primaryLabel =
+  const primaryAriaLabel =
     state === "idle"
       ? "Start"
       : state === "pregame"
@@ -454,6 +497,9 @@ export default function Page() {
           : state === "running"
             ? "Pause"
             : "Start";
+
+  const primaryIcon =
+    state === "pregame" || state === "running" ? <IconPause /> : <IconPlay />;
 
   const showSkipPregame = state === "pregame" || state === "pregame_paused";
 
@@ -469,9 +515,6 @@ export default function Page() {
         <div className="card">
           <header className="header">
             <h1 className="title">Skip-Bo voice timer</h1>
-            <p className="subtitle">
-              Voice or tap: start, resume, switch, stop, reset, restart, status. Pre-game: 90s thinking, then play.
-            </p>
             <div className="status-row" role="status" aria-live="polite">
               <span className="chip">
                 <strong>{phaseLabel}</strong>
@@ -574,47 +617,48 @@ export default function Page() {
                   onChange={(e) => setSeconds(Math.min(59, Math.max(0, Number(e.target.value) || 0)))}
                 />
               </div>
-              <button type="button" className="btn-apply" onClick={applyTime}>
-                Apply time
+              <button type="button" className="btn-apply" onClick={applyTime} aria-label="Apply time">
+                <IconCheck />
               </button>
             </div>
 
             <div className="button-grid">
               <button
                 type="button"
-                className="btn primary"
+                className="btn primary btn-icon-only"
                 onClick={onPrimary}
                 disabled={state === "ended"}
+                aria-label={primaryAriaLabel}
               >
-                {primaryLabel}
+                {primaryIcon}
               </button>
-              <button type="button" className="btn good" onClick={finishTurn}>
-                Switch turn
+              <button type="button" className="btn good btn-icon-only" onClick={finishTurn} aria-label="Finish turn">
+                <IconFinishTurn />
               </button>
-              <button type="button" className="btn warn" onClick={stopGame}>
-                Stop
+              <button type="button" className="btn warn btn-icon-only" onClick={stopGame} aria-label="Stop">
+                <IconStop />
               </button>
-              <button type="button" className="btn neutral" onClick={resumeGame}>
-                Resume
-              </button>
-              <button type="button" className="btn bad" onClick={() => resetGame(true)}>
-                Reset
-              </button>
-              <button type="button" className="btn neutral" onClick={statusReport}>
-                Status
+              <button type="button" className="btn neutral btn-icon-only" onClick={resumeGame} aria-label="Resume">
+                <IconPlay />
               </button>
               {showSkipPregame ? (
-                <button type="button" className="btn neutral btn-span-2" onClick={skipPregame}>
-                  Skip pre-game
+                <button
+                  type="button"
+                  className="btn neutral btn-span-2 btn-icon-only"
+                  onClick={skipPregame}
+                  aria-label="Skip pre-game"
+                >
+                  <IconSkipForward />
                 </button>
               ) : null}
               <button
                 type="button"
-                className={`btn neutral btn-span-2 ${voiceOn ? "voice-on" : "voice-off"}`}
+                className={`btn neutral btn-span-2 btn-icon-only ${voiceOn ? "voice-on" : "voice-off"}`}
                 onClick={toggleVoice}
                 aria-pressed={voiceOn}
+                aria-label={voiceOn ? "Turn voice off" : "Turn voice on"}
               >
-                <span aria-hidden>{voiceOn ? "●" : "○"}</span> Voice {voiceOn ? "on" : "off"}
+                <IconMic muted={!voiceOn} />
               </button>
             </div>
 

@@ -332,6 +332,14 @@ body {
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-apply .btn-icon-svg {
+  flex-shrink: 0;
 }
 
 @media (min-width: 520px) {
@@ -371,6 +379,21 @@ body {
   justify-content: center;
   gap: 8px;
   transition: transform 0.08s ease, filter 0.15s ease;
+}
+
+.btn-icon-only {
+  padding: 12px;
+  min-width: 48px;
+}
+
+.btn-icon-only .btn-icon-svg {
+  display: block;
+}
+
+.btn-icon-svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .btn:active {
