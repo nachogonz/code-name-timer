@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
-  title: "Skip-Bo voice timer",
-  description: "Two-team Skip-Bo timer with pre-game thinking time and voice commands",
+  title: "Code-Name voice timer",
+  description: "Two-team Code-Name timer with pre-game thinking time and voice commands",
 };
 
 export const viewport: Viewport = {
