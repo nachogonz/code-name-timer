@@ -24,6 +24,7 @@ type WebSpeechRecognition = EventTarget & {
   continuous: boolean;
   maxAlternatives?: number;
   onresult: ((event: WebSpeechResultEvent) => void) | null;
+  onstart: (() => void) | null;
   onend: (() => void) | null;
   onerror: ((event: WebSpeechErrorEvent) => void) | null;
   start(): void;
@@ -71,10 +72,10 @@ function IconFinishTurn() {
   );
 }
 
-function IconSkipForward() {
+function IconReset() {
   return (
     <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M6 18l8.5-6L6 6v12zm8-12v12h2V6h-2z" />
+      <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
     </svg>
   );
 }
@@ -102,7 +103,7 @@ function IconCheck() {
   );
 }
 
-type VoiceAction = "start" | "finish" | "stop" | "resume" | "reset" | "skip_pregame";
+type VoiceAction = "start" | "finish" | "stop" | "resume" | "reset";
 
 function parseVoiceTranscript(text: string): VoiceAction | null {
   const t = text.toLowerCase().replace(/\s+/g, " ").trim();
@@ -114,7 +115,6 @@ function parseVoiceTranscript(text: string): VoiceAction | null {
   if (/\b(stop|pause|hold)\b/.test(t)) return "stop";
   if (/\b(resume|continue)\b/.test(t)) return "resume";
   if (/\b(finish|switch|next|done)\b/.test(t)) return "finish";
-  if (/\bskip\b/.test(t)) return "skip_pregame";
   if (/\b(start|begin|go)\b/.test(t)) return "start";
 
   const words = t.split(/\s+/).filter(Boolean);
@@ -152,8 +152,17 @@ export default function Page() {
     resumeGame: () => {},
     finishTurn: () => {},
     resetGame: () => {},
-    skipPregame: () => {},
   });
+  const voiceRestartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const voiceBackoffUntilRef = useRef(0);
+  const networkFailStreakRef = useRef(0);
+
+  function clearVoiceRestartTimer() {
+    if (voiceRestartTimerRef.current != null) {
+      clearTimeout(voiceRestartTimerRef.current);
+      voiceRestartTimerRef.current = null;
+    }
+  }
 
   const teamName = useCallback(
     (team: Team) => (team === "A" ? teamAName.trim() || DEFAULT_A : teamBName.trim() || DEFAULT_B),
@@ -336,17 +345,18 @@ export default function Page() {
     }
   }, [state, currentTeam, pushLog]);
 
-  const skipPregame = useCallback(() => {
-    if (state !== "pregame" && state !== "pregame_paused") return;
-    turnMarksAnnouncedRef.current = new Set();
-    lastTickRef.current = performance.now();
-    setCurrentTeam("A");
-    setState("running");
-    pushLog(`${teamName("A")} to play.`, true);
-  }, [state, pushLog, teamName]);
-
   const finishTurn = useCallback(() => {
-    if (state === "ended" || state === "idle" || state === "pregame" || state === "pregame_paused") return;
+    if (state === "ended" || state === "idle") return;
+
+    if (state === "pregame" || state === "pregame_paused") {
+      turnMarksAnnouncedRef.current = new Set();
+      lastTickRef.current = performance.now();
+      setCurrentTeam("A");
+      setState("running");
+      pushLog(`Pre-game finished. ${teamName("A")} to play.`, true);
+      return;
+    }
+
     if (state === "running") updateRunningTime();
     turnMarksAnnouncedRef.current = new Set();
     const total = Math.max(1, minutes * 60 + seconds);
@@ -403,7 +413,6 @@ export default function Page() {
     resumeGame,
     finishTurn,
     resetGame,
-    skipPregame,
   };
 
   const dispatchVoiceAction = useCallback((action: VoiceAction) => {
@@ -424,9 +433,6 @@ export default function Page() {
         break;
       case "reset":
         h.resetGame();
-        break;
-      case "skip_pregame":
-        h.skipPregame();
         break;
       default:
         break;
@@ -454,13 +460,39 @@ export default function Page() {
       pushLog("Voice recognition is not supported in this browser.");
       return null;
     }
+
+    const scheduleRestart = (recognition: WebSpeechRecognition) => {
+      clearVoiceRestartTimer();
+      if (!listeningRef.current) return;
+
+      const now = Date.now();
+      const backoffWait = Math.max(0, voiceBackoffUntilRef.current - now);
+      const delay = Math.max(450, backoffWait);
+
+      voiceRestartTimerRef.current = setTimeout(() => {
+        voiceRestartTimerRef.current = null;
+        if (!listeningRef.current || recognitionRef.current !== recognition) return;
+        try {
+          recognition.start();
+        } catch {
+          /* InvalidStateError: already started — next onend will reschedule */
+        }
+      }, delay);
+    };
+
     const recognition = new Recognition();
     recognition.lang = "en-US";
     recognition.interimResults = true;
     recognition.continuous = true;
     recognition.maxAlternatives = 1;
 
+    recognition.onstart = () => {
+      networkFailStreakRef.current = 0;
+      voiceBackoffUntilRef.current = 0;
+    };
+
     recognition.onresult = (event) => {
+      networkFailStreakRef.current = 0;
       let combined = "";
       for (let i = 0; i < event.results.length; i++) {
         combined += event.results[i][0]?.transcript ?? "";
@@ -470,18 +502,51 @@ export default function Page() {
     };
 
     recognition.onerror = (event) => {
-      if (event.error === "no-speech" || event.error === "aborted") return;
-      setLog(`Voice: ${event.error}. Buttons still work.`);
+      const err = event.error;
+      if (err === "no-speech" || err === "aborted") return;
+
+      if (err === "not-allowed" || err === "service-not-allowed") {
+        clearVoiceRestartTimer();
+        listeningRef.current = false;
+        setVoiceOn(false);
+        pushLog("Voice: microphone access denied.");
+        return;
+      }
+
+      if (err === "audio-capture") {
+        clearVoiceRestartTimer();
+        listeningRef.current = false;
+        setVoiceOn(false);
+        pushLog("Voice: no microphone available.");
+        return;
+      }
+
+      if (err === "network") {
+        networkFailStreakRef.current += 1;
+        const n = networkFailStreakRef.current;
+        const backoffMs = Math.min(25_000, 1200 * 2 ** Math.min(n - 1, 4));
+        voiceBackoffUntilRef.current = Date.now() + backoffMs;
+
+        if (n >= 5) {
+          clearVoiceRestartTimer();
+          listeningRef.current = false;
+          setVoiceOn(false);
+          networkFailStreakRef.current = 0;
+          voiceBackoffUntilRef.current = 0;
+          pushLog("Voice: network unstable. Tap Voice again when online.");
+          return;
+        }
+
+        setLog(`Voice: network. Next retry in ${Math.ceil(backoffMs / 1000)}s…`);
+        return;
+      }
+
+      setLog(`Voice: ${err}.`);
     };
 
     recognition.onend = () => {
-      if (listeningRef.current) {
-        try {
-          recognition.start();
-        } catch {
-          /* already started */
-        }
-      }
+      if (!listeningRef.current) return;
+      scheduleRestart(recognition);
     };
 
     recognitionRef.current = recognition;
@@ -507,22 +572,32 @@ export default function Page() {
     listeningRef.current = next;
 
     if (next) {
+      clearVoiceRestartTimer();
+      networkFailStreakRef.current = 0;
+      voiceBackoffUntilRef.current = 0;
       try {
         recognition.start();
-        pushLog("Voice on. Say start, pause, finish, reset, or skip.", true);
+        pushLog("Voice on. Say start, pause, finish, or reset.", true);
       } catch {
         setVoiceOn(false);
         listeningRef.current = false;
         pushLog("Could not start voice. Try again.");
       }
     } else {
-      recognition.stop();
+      clearVoiceRestartTimer();
+      listeningRef.current = false;
+      try {
+        recognition.stop();
+      } catch {
+        /* ignore */
+      }
       pushLog("Voice off.");
     }
   }, [voiceOn, setupVoice, pushLog]);
 
   useEffect(() => {
     return () => {
+      clearVoiceRestartTimer();
       recognitionRef.current?.stop();
       listeningRef.current = false;
     };
@@ -541,8 +616,6 @@ export default function Page() {
 
   const primaryIcon =
     state === "pregame" || state === "running" ? <IconPause /> : <IconPlay />;
-
-  const showSkipPregame = state === "pregame" || state === "pregame_paused";
 
   const onPrimary = () => {
     if (state === "ended") return;
@@ -575,7 +648,9 @@ export default function Page() {
               <div className="pregame-label">Pre-game thinking</div>
               <div className="pregame-clock">{formatTime(pregameRemaining)}</div>
               <div className="pregame-hint">
-                {state === "pregame_paused" ? "Paused — resume when ready." : "Team clocks start after this."}
+                {state === "pregame_paused"
+                  ? "Paused — resume when ready. Tap Finish to start play."
+                  : "Tap Finish to begin play, or wait for the countdown."}
               </div>
             </div>
           )}
@@ -675,21 +750,25 @@ export default function Page() {
                 {primaryIcon}
                 <span className="btn-word">{primaryWord}</span>
               </button>
-              <button type="button" className="btn good btn-labeled" onClick={finishTurn} aria-label="Finish">
+              <button
+                type="button"
+                className="btn good btn-labeled"
+                onClick={finishTurn}
+                disabled={state === "idle" || state === "ended"}
+                aria-label="Finish"
+              >
                 <IconFinishTurn />
                 <span className="btn-word">Finish</span>
               </button>
-              {showSkipPregame ? (
-                <button
-                  type="button"
-                  className="btn neutral btn-span-2 btn-labeled"
-                  onClick={skipPregame}
-                  aria-label="Skip"
-                >
-                  <IconSkipForward />
-                  <span className="btn-word">Skip</span>
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="btn bad btn-labeled btn-span-2"
+                onClick={resetGame}
+                aria-label="Reset game"
+              >
+                <IconReset />
+                <span className="btn-word">Reset</span>
+              </button>
               <button
                 type="button"
                 className={`btn neutral btn-span-2 btn-labeled ${voiceOn ? "voice-on" : "voice-off"}`}
