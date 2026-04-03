@@ -210,7 +210,7 @@ export default function Page() {
       lastTickRef.current = null;
       const loser = teamName(timedOut);
       const winner = teamName(timedOut === "A" ? "B" : "A");
-      pushLog(`${loser} is out of time. ${winner} wins.`, true);
+      pushLog(`Time's up! ${loser} ran out of time. ${winner} wins!`, true);
     },
     [pushLog, teamName]
   );
@@ -263,7 +263,7 @@ export default function Page() {
     setCurrentTeam("A");
     setState("running");
     lastTickRef.current = performance.now();
-    pushLog(`Thinking time over. ${teamName("A")} to play.`, true);
+    pushLog(`Thinking time is over! It's ${teamName("A")}'s turn. Clock is running.`, true);
   }, [state, pregameRemaining, pushLog, teamName]);
 
   useEffect(() => {
@@ -299,7 +299,7 @@ export default function Page() {
       setPregameRemaining(PREGAME_SECONDS);
       setState("pregame");
       lastTickRef.current = performance.now();
-      pushLog(`90 seconds thinking time. Then ${teamName("A")} starts.`, true);
+      pushLog(`Pre-game started. 90 seconds thinking time. ${teamName("A")} plays first.`, true);
       return;
     }
     if (state === "pregame_paused") {
@@ -311,7 +311,7 @@ export default function Page() {
     if (state === "paused") {
       setState("running");
       lastTickRef.current = performance.now();
-      pushLog(`${teamName(currentTeam)} resumed.`, true);
+      pushLog(`${teamName(currentTeam)} resumed. Clock running.`, true);
     }
   }, [state, currentTeam, pushLog, teamName]);
 
@@ -320,7 +320,7 @@ export default function Page() {
       updateRunningTime();
       setState("paused");
       lastTickRef.current = null;
-      pushLog(`Paused on ${teamName(currentTeam)}.`, true);
+      pushLog(`Paused. ${teamName(currentTeam)}'s clock stopped.`, true);
       return;
     }
     if (state === "pregame") {
@@ -335,7 +335,7 @@ export default function Page() {
     if (state === "paused") {
       setState("running");
       lastTickRef.current = performance.now();
-      pushLog(`${teamName(currentTeam)} resumed.`, true);
+      pushLog(`Resumed. ${teamName(currentTeam)}'s clock running.`, true);
       return;
     }
     if (state === "pregame_paused") {
@@ -350,10 +350,13 @@ export default function Page() {
 
     if (state === "pregame" || state === "pregame_paused") {
       turnMarksAnnouncedRef.current = new Set();
+      const total = Math.max(1, minutes * 60 + seconds);
+      setTimeA(total);
+      setTimeB(total);
       lastTickRef.current = performance.now();
       setCurrentTeam("A");
       setState("running");
-      pushLog(`Pre-game finished. ${teamName("A")} to play.`, true);
+      pushLog(`Pre-game finished. It's ${teamName("A")}'s turn! ${formatTime(total)} on the clock.`, true);
       return;
     }
 
@@ -366,7 +369,7 @@ export default function Page() {
     setCurrentTeam(nextTeam);
     setState("running");
     lastTickRef.current = performance.now();
-    pushLog(`${teamName(nextTeam)} turn. Clocks reset.`, true);
+    pushLog(`Finish! It's ${teamName(nextTeam)}'s turn now. ${formatTime(total)} on the clock.`, true);
   }, [state, currentTeam, minutes, seconds, pushLog, updateRunningTime, teamName]);
 
   const resetGame = useCallback(() => {
@@ -380,7 +383,7 @@ export default function Page() {
     setCurrentTeam("A");
     setState("idle");
     lastTickRef.current = null;
-    pushLog("Timer reset.", true);
+    pushLog("Game reset. Tap Start for a new round.", true);
   }, [minutes, seconds, pushLog]);
 
   const applyTime = useCallback(() => {
@@ -444,9 +447,10 @@ export default function Page() {
       const action = parseVoiceTranscript(transcript);
       if (!action) {
         if (isFinal && transcript.trim().length > 0)
-          setLog(`Heard: "${transcript.trim()}" — no command matched.`);
+          setLog(`Heard: "${transcript.trim()}" — no command.`);
         return;
       }
+      setLog(`Voice: "${transcript.trim()}" → ${action}`);
       dispatchVoiceAction(action);
     },
     [dispatchVoiceAction]
@@ -493,12 +497,13 @@ export default function Page() {
 
     recognition.onresult = (event) => {
       networkFailStreakRef.current = 0;
-      let combined = "";
-      for (let i = 0; i < event.results.length; i++) {
-        combined += event.results[i][0]?.transcript ?? "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const transcript = result[0]?.transcript ?? "";
+        if (transcript.trim()) {
+          processVoiceRef.current(transcript.trim(), result.isFinal);
+        }
       }
-      const last = event.results[event.results.length - 1];
-      processVoiceRef.current(combined.trim(), last.isFinal);
     };
 
     recognition.onerror = (event) => {
@@ -628,7 +633,7 @@ export default function Page() {
       <div className="app">
         <div className="card">
           <header className="header">
-            <h1 className="title">Code-Name voice timer</h1>
+            <h1 className="title">Skip-Bo voice timer</h1>
             <div className="status-row" role="status" aria-live="polite">
               <span className="chip">
                 <strong>{phaseLabel}</strong>
@@ -641,6 +646,7 @@ export default function Page() {
                 </span>
               ) : null}
             </div>
+           
           </header>
 
           {(state === "pregame" || state === "pregame_paused") && (
@@ -708,36 +714,7 @@ export default function Page() {
           </div>
 
           <div className="controls">
-            <div className="settings">
-              <div className="setting">
-                <label htmlFor="min">Minutes</label>
-                <input
-                  id="min"
-                  type="number"
-                  min={0}
-                  max={99}
-                  inputMode="numeric"
-                  value={minutes}
-                  onChange={(e) => setMinutes(Number(e.target.value) || 0)}
-                />
-              </div>
-              <div className="setting">
-                <label htmlFor="sec">Seconds</label>
-                <input
-                  id="sec"
-                  type="number"
-                  min={0}
-                  max={59}
-                  inputMode="numeric"
-                  value={seconds}
-                  onChange={(e) => setSeconds(Math.min(59, Math.max(0, Number(e.target.value) || 0)))}
-                />
-              </div>
-              <button type="button" className="btn-apply" onClick={applyTime} aria-label="Apply">
-                <IconCheck />
-                <span className="btn-word">Apply</span>
-              </button>
-            </div>
+          
 
             <div className="button-grid">
               <button
