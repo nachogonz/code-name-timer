@@ -1,6 +1,6 @@
-# Skip-Bo Voice Timer
+# Code-Name Voice Timer
 
-Quick Next.js app for a 2-team chess-clock style Skip-Bo timer.
+Quick Next.js app for a 2-team chess-clock style Code-Name timer.
 
 ## Run locally
 
