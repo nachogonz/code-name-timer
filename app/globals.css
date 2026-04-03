@@ -324,22 +324,26 @@ body {
 
 .btn-apply {
   grid-column: 1 / -1;
-  min-height: 44px;
+  min-height: 48px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: rgba(148, 163, 184, 0.15);
   color: var(--text);
-  font-size: 0.9rem;
-  font-weight: 700;
   cursor: pointer;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
+  padding: 8px 10px;
 }
 
 .btn-apply .btn-icon-svg {
   flex-shrink: 0;
+}
+
+.btn-apply .btn-word {
+  font-size: 0.68rem;
 }
 
 @media (min-width: 520px) {
@@ -381,13 +385,25 @@ body {
   transition: transform 0.08s ease, filter 0.15s ease;
 }
 
-.btn-icon-only {
-  padding: 12px;
-  min-width: 48px;
+.btn-labeled {
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 8px;
+  min-height: 56px;
+  min-width: 0;
 }
 
-.btn-icon-only .btn-icon-svg {
+.btn-labeled .btn-icon-svg {
   display: block;
+}
+
+.btn-word {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  opacity: 0.95;
 }
 
 .btn-icon-svg {

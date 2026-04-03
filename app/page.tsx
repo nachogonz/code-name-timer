@@ -487,7 +487,7 @@ export default function Page() {
     };
   }, []);
 
-  const primaryAriaLabel =
+  const primaryWord =
     state === "idle"
       ? "Start"
       : state === "pregame"
@@ -617,48 +617,47 @@ export default function Page() {
                   onChange={(e) => setSeconds(Math.min(59, Math.max(0, Number(e.target.value) || 0)))}
                 />
               </div>
-              <button type="button" className="btn-apply" onClick={applyTime} aria-label="Apply time">
+              <button type="button" className="btn-apply" onClick={applyTime} aria-label="Apply">
                 <IconCheck />
+                <span className="btn-word">Apply</span>
               </button>
             </div>
 
             <div className="button-grid">
               <button
                 type="button"
-                className="btn primary btn-icon-only"
+                className="btn primary btn-labeled"
                 onClick={onPrimary}
                 disabled={state === "ended"}
-                aria-label={primaryAriaLabel}
+                aria-label={primaryWord}
               >
                 {primaryIcon}
+                <span className="btn-word">{primaryWord}</span>
               </button>
-              <button type="button" className="btn good btn-icon-only" onClick={finishTurn} aria-label="Finish turn">
+              <button type="button" className="btn good btn-labeled" onClick={finishTurn} aria-label="Finish">
                 <IconFinishTurn />
-              </button>
-              <button type="button" className="btn warn btn-icon-only" onClick={stopGame} aria-label="Stop">
-                <IconStop />
-              </button>
-              <button type="button" className="btn neutral btn-icon-only" onClick={resumeGame} aria-label="Resume">
-                <IconPlay />
+                <span className="btn-word">Finish</span>
               </button>
               {showSkipPregame ? (
                 <button
                   type="button"
-                  className="btn neutral btn-span-2 btn-icon-only"
+                  className="btn neutral btn-span-2 btn-labeled"
                   onClick={skipPregame}
-                  aria-label="Skip pre-game"
+                  aria-label="Skip"
                 >
                   <IconSkipForward />
+                  <span className="btn-word">Skip</span>
                 </button>
               ) : null}
               <button
                 type="button"
-                className={`btn neutral btn-span-2 btn-icon-only ${voiceOn ? "voice-on" : "voice-off"}`}
+                className={`btn neutral btn-span-2 btn-labeled ${voiceOn ? "voice-on" : "voice-off"}`}
                 onClick={toggleVoice}
                 aria-pressed={voiceOn}
-                aria-label={voiceOn ? "Turn voice off" : "Turn voice on"}
+                aria-label={voiceOn ? "Voice off" : "Voice on"}
               >
                 <IconMic muted={!voiceOn} />
+                <span className="btn-word">Voice</span>
               </button>
             </div>
 
