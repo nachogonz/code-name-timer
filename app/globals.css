@@ -273,6 +273,8 @@ body {
 }
 
 .team {
+  display: flex;
+  flex-direction: column;
   padding: 16px 16px 18px;
   border-radius: var(--radius-md);
   border: 0.5px solid var(--ios-separator);
@@ -365,14 +367,80 @@ body {
   background: rgba(148, 163, 184, 0.1);
 }
 
-.clock {
-  margin-top: 14px;
-  font-weight: 700;
-  font-size: clamp(3rem, 14vw, 4.5rem);
+/* Primary game clock — full width above Boys / Girls columns */
+.game-timer-hero {
+  text-align: center;
+  padding: 14px 18px 18px;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid var(--ios-separator);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 132, 255, 0.06) 0%,
+    transparent 100%
+  );
+}
+
+.game-timer-eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-bright);
+}
+
+.game-timer-clock {
+  font-size: clamp(3.25rem, 14vw, 5rem);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
   font-feature-settings: "tnum" 1, "ss01" 1;
+}
+
+.game-timer-status {
+  margin: 10px 0 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.team-bank {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 0.5px solid rgba(255, 255, 255, 0.06);
+}
+
+.team-bank-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.team-bank-time {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+@media (min-width: 720px) {
+  .game-timer-hero {
+    border-bottom-color: var(--border);
+    padding: 18px 24px 22px;
+  }
+
+  .game-timer-clock {
+    font-size: clamp(3.5rem, 8vw, 4.5rem);
+  }
 }
 
 .subtext {
@@ -677,82 +745,64 @@ body {
   }
 }
 
-/* Scoreboard */
-.scoreboard {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  margin-top: 10px;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.04);
-  border: 0.5px solid rgba(255, 255, 255, 0.08);
-}
-
-.score-team {
-  flex: 1;
+/* Points: large number on top, − / + row directly below (compact height) */
+.team-score {
+  margin-top: 6px;
+  padding-top: 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.08);
 }
 
-.score-label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+.team-score-value {
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.03em;
 }
 
-.score-controls {
+.team-score-actions {
   display: flex;
-  align-items: center;
+  width: 100%;
   gap: 6px;
 }
 
-.score-btn {
-  width: 30px;
-  height: 30px;
+.team-score-btn {
+  flex: 1;
+  min-height: 38px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.08);
-  color: var(--muted);
-  font-size: 1.125rem;
+  color: var(--text);
+  font-size: 1.25rem;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
-  transition: background 0.12s ease;
+  transition:
+    background 0.18s ease,
+    transform 0.12s ease;
 }
 
-.score-btn:active {
-  background: rgba(255, 255, 255, 0.16);
+.team-score-btn:active {
+  transform: scale(0.97);
+  background: rgba(255, 255, 255, 0.14);
 }
 
-.score-btn-plus {
+.team-score-btn.team-score-btn-plus {
+  background: rgba(10, 132, 255, 0.22);
   color: var(--accent-bright);
 }
 
-.score-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  min-width: 2ch;
-  text-align: center;
-}
-
-.score-divider {
-  width: 1px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 0 6px;
+.team-score-btn.team-score-btn-plus:active {
+  background: rgba(10, 132, 255, 0.28);
 }
 
 /* Settings Modal */
@@ -899,26 +949,6 @@ body {
     display: none;
   }
 
-  .scoreboard {
-    margin-top: 8px;
-    padding: 6px 8px;
-  }
-
-  .score-label {
-    font-size: 0.625rem;
-  }
-
-  .score-value {
-    font-size: 1.25rem;
-  }
-
-  .score-btn {
-    width: 26px;
-    height: 26px;
-    font-size: 1rem;
-    border-radius: 7px;
-  }
-
   .setting {
     gap: 4px;
   }
@@ -982,16 +1012,14 @@ body {
     min-height: 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    padding: 6px 10px 8px;
+    gap: 5px;
+    padding: 4px 8px 6px;
     align-content: stretch;
   }
 
   .team {
     min-height: 0;
-    display: flex;
-    flex-direction: column;
-    padding: 5px 6px 6px;
+    padding: 4px 5px 4px;
     border-radius: 14px;
     border: 0.5px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.035);
@@ -1019,18 +1047,53 @@ body {
     letter-spacing: 0.06em;
   }
 
-  /* Larger digits only; spacing elsewhere tightened so card height stays stable */
-  .clock {
-    margin-top: 2px;
-    font-size: clamp(2.85rem, 13.5vw, 4rem);
-    font-weight: 700;
-    line-height: 1;
+  .game-timer-hero {
+    padding: 8px 12px 10px;
+  }
+
+  .game-timer-eyebrow {
+    margin-bottom: 4px;
+    font-size: 0.625rem;
+  }
+
+  .game-timer-clock {
+    font-size: clamp(2.75rem, 13vw, 4rem);
+  }
+
+  .game-timer-status {
+    margin-top: 6px;
+    font-size: 0.75rem;
+  }
+
+  .team-bank {
+    margin-top: 5px;
+    padding: 4px 6px;
+  }
+
+  .team-bank-time {
+    font-size: 0.8125rem;
   }
 
   .subtext {
-    margin-top: 2px;
-    font-size: 0.6875rem;
-    line-height: 1.2;
+    margin-top: 1px;
+    font-size: 0.625rem;
+    line-height: 1.15;
+  }
+
+  .team-score {
+    margin-top: 3px;
+    padding-top: 4px;
+    gap: 3px;
+  }
+
+  .team-score-value {
+    font-size: clamp(2rem, 9.5vw, 2.85rem);
+  }
+
+  .team-score-btn {
+    min-height: 34px;
+    border-radius: 9px;
+    font-size: 1.125rem;
   }
 
   .controls {

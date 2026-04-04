@@ -368,13 +368,7 @@ export default function Page() {
               <div className="header-top">
                 <div className="header-left">
                   <h1 className="title">Code-Name voice timer</h1>
-                  <div className="status-row" role="status" aria-live="polite">
-                    <span className="chip">
-                      <strong>{phaseLabel}</strong>
-                      <span aria-hidden> · </span>
-                      {teamName(currentTeam)}
-                    </span>
-                  </div>
+             
                 </div>
                 <button
                   type="button"
@@ -384,26 +378,6 @@ export default function Page() {
                 >
                   <IconSettings />
                 </button>
-              </div>
-
-              <div className="scoreboard">
-                <div className="score-team">
-                  <span className="score-label">{teamName("A")}</span>
-                  <div className="score-controls">
-                    <button type="button" className="score-btn" onClick={() => setScoreA((p) => Math.max(0, p - 1))} aria-label="Decrease score A">−</button>
-                    <span className="score-value">{scoreA}</span>
-                    <button type="button" className="score-btn score-btn-plus" onClick={() => setScoreA((p) => p + 1)} aria-label="Increase score A">+</button>
-                  </div>
-                </div>
-                <div className="score-divider" />
-                <div className="score-team">
-                  <span className="score-label">{teamName("B")}</span>
-                  <div className="score-controls">
-                    <button type="button" className="score-btn" onClick={() => setScoreB((p) => Math.max(0, p - 1))} aria-label="Decrease score B">−</button>
-                    <span className="score-value">{scoreB}</span>
-                    <button type="button" className="score-btn score-btn-plus" onClick={() => setScoreB((p) => p + 1)} aria-label="Increase score B">+</button>
-                  </div>
-                </div>
               </div>
 
               <div className="settings desktop-only">
@@ -494,12 +468,37 @@ export default function Page() {
               </div>
             )}
 
+            {state !== "pregame" && state !== "pregame_paused" && (
+              <div className="game-timer-hero" aria-live="polite">
+                <p className="game-timer-eyebrow">
+                  {state === "idle" ? "Time per turn" : teamName(currentTeam)}
+                </p>
+                <div className="game-timer-clock">
+                  {formatTime(currentTeam === "A" ? timeA : timeB)}
+                </div>
+                <p className="game-timer-status">
+                  {state === "idle"
+                    ? "Tap Start when ready"
+                    : state === "running"
+                      ? "Clock running"
+                      : state === "paused"
+                        ? "Paused"
+                        : state === "ended"
+                          ? "Ended"
+                          : ""}
+                </p>
+              </div>
+            )}
+
             <div className={`teams ${state === "pregame" || state === "pregame_paused" ? "hide-on-mobile" : ""}`}>
               {teamDisplayOrder.map((team) => {
                 const isA = team === "A";
                 const nameValue = isA ? teamAName : teamBName;
                 const setName = isA ? setTeamAName : setTeamBName;
                 const timeValue = isA ? timeA : timeB;
+                const scoreValue = isA ? scoreA : scoreB;
+                const bumpScore = isA ? () => setScoreA((p) => p + 1) : () => setScoreB((p) => p + 1);
+                const lowerScore = isA ? () => setScoreA((p) => Math.max(0, p - 1)) : () => setScoreB((p) => Math.max(0, p - 1));
                 const isCurrent = currentTeam === team;
                 return (
                   <section
@@ -519,15 +518,29 @@ export default function Page() {
                         {isCurrent ? (state === "running" ? "Playing" : "Turn") : "Waiting"}
                       </span>
                     </div>
-                    <div className="clock">{formatTime(timeValue)}</div>
+                    <div className="team-bank">
+                      <span className="team-bank-label">Bank</span>
+                      <span className="team-bank-time">{formatTime(timeValue)}</span>
+                    </div>
                     <div className="subtext">
                       {isCurrent && state === "running"
-                        ? "Clock running"
+                        ? "On the clock"
                         : isCurrent && state === "paused"
                           ? "Paused"
                           : state === "ended"
                             ? "Ended"
-                            : "Ready"}
+                            : "Waiting"}
+                    </div>
+                    <div className="team-score" aria-label={`${teamName(team)} points`}>
+                      <span className="team-score-value">{scoreValue}</span>
+                      <div className="team-score-actions">
+                        <button type="button" className="team-score-btn" onClick={lowerScore} aria-label={`${teamName(team)} minus one point`}>
+                          −
+                        </button>
+                        <button type="button" className="team-score-btn team-score-btn-plus" onClick={bumpScore} aria-label={`${teamName(team)} plus one point`}>
+                          +
+                        </button>
+                      </div>
                     </div>
                   </section>
                 );
