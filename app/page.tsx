@@ -103,6 +103,22 @@ function IconCheck() {
   );
 }
 
+function IconSettings() {
+  return (
+    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1115.6 12 3.6 3.6 0 0112 15.6z" />
+    </svg>
+  );
+}
+
+function IconClose() {
+  return (
+    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+    </svg>
+  );
+}
+
 type VoiceAction = "start" | "finish" | "stop" | "resume" | "reset";
 
 function parseVoiceTranscript(text: string): VoiceAction | null {
@@ -137,6 +153,9 @@ export default function Page() {
   const [pregameRemaining, setPregameRemaining] = useState(PREGAME_SECONDS);
   const [log, setLog] = useState("Ready. Tap Start or turn on voice.");
   const [voiceOn, setVoiceOn] = useState(false);
+  const [scoreA, setScoreA] = useState(0);
+  const [scoreB, setScoreB] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
 
   const lastTickRef = useRef<number | null>(null);
   const recognitionRef = useRef<WebSpeechRecognition | null>(null);
@@ -210,16 +229,19 @@ export default function Page() {
     [speak]
   );
 
-  const endGame = useCallback(
+  const onTimeUp = useCallback(
     (timedOut: Team) => {
       turnMarksAnnouncedRef.current = new Set();
-      setState("ended");
-      lastTickRef.current = null;
-      const loser = teamName(timedOut);
-      const winner = teamName(timedOut === "A" ? "B" : "A");
-      pushLog(`Time's up! ${loser} ran out of time. ${winner} wins!`, true);
+      const total = Math.max(1, minutes * 60 + seconds);
+      setTimeA(total);
+      setTimeB(total);
+      const nextTeam: Team = timedOut === "A" ? "B" : "A";
+      setCurrentTeam(nextTeam);
+      setState("running");
+      lastTickRef.current = performance.now();
+      pushLog(`Time's up for ${teamName(timedOut)}! It's ${teamName(nextTeam)}'s turn now.`, true);
     },
-    [pushLog, teamName]
+    [pushLog, teamName, minutes, seconds]
   );
 
   const updateRunningTime = useCallback(() => {
@@ -232,17 +254,17 @@ export default function Page() {
     if (currentTeam === "A") {
       setTimeA((prev) => {
         const next = Math.max(0, prev - elapsed);
-        if (next === 0) setTimeout(() => endGame("A"), 0);
+        if (next === 0) setTimeout(() => onTimeUp("A"), 0);
         return next;
       });
     } else {
       setTimeB((prev) => {
         const next = Math.max(0, prev - elapsed);
-        if (next === 0) setTimeout(() => endGame("B"), 0);
+        if (next === 0) setTimeout(() => onTimeUp("B"), 0);
         return next;
       });
     }
-  }, [state, currentTeam, endGame]);
+  }, [state, currentTeam, onTimeUp]);
 
   const updatePregameTime = useCallback(() => {
     if (state !== "pregame" || lastTickRef.current == null) return;
@@ -641,20 +663,53 @@ export default function Page() {
         <div className="card">
           <div className="card-body">
             <header className="header">
-              <h1 className="title">Code-Name voice timer</h1>
-              <div className="status-row" role="status" aria-live="polite">
-                <span className="chip">
-                  <strong>{phaseLabel}</strong>
-                  <span aria-hidden> · </span>
-                  {teamName(currentTeam)}
-                </span>
-                {voiceOn ? (
-                  <span className="chip chip-listening">
-                    <strong>Listening</strong>
-                  </span>
-                ) : null}
+              <div className="header-top">
+                <div className="header-left">
+                  <h1 className="title">Code-Name voice timer</h1>
+                  <div className="status-row" role="status" aria-live="polite">
+                    <span className="chip">
+                      <strong>{phaseLabel}</strong>
+                      <span aria-hidden> · </span>
+                      {teamName(currentTeam)}
+                    </span>
+                    {voiceOn ? (
+                      <span className="chip chip-listening">
+                        <strong>Listening</strong>
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-settings"
+                  onClick={() => setShowSettings(true)}
+                  aria-label="Settings"
+                >
+                  <IconSettings />
+                </button>
               </div>
-              <div className="settings">
+
+              <div className="scoreboard">
+                <div className="score-team">
+                  <span className="score-label">{teamName("A")}</span>
+                  <div className="score-controls">
+                    <button type="button" className="score-btn" onClick={() => setScoreA((p) => Math.max(0, p - 1))} aria-label="Decrease score A">−</button>
+                    <span className="score-value">{scoreA}</span>
+                    <button type="button" className="score-btn score-btn-plus" onClick={() => setScoreA((p) => p + 1)} aria-label="Increase score A">+</button>
+                  </div>
+                </div>
+                <div className="score-divider" />
+                <div className="score-team">
+                  <span className="score-label">{teamName("B")}</span>
+                  <div className="score-controls">
+                    <button type="button" className="score-btn" onClick={() => setScoreB((p) => Math.max(0, p - 1))} aria-label="Decrease score B">−</button>
+                    <span className="score-value">{scoreB}</span>
+                    <button type="button" className="score-btn score-btn-plus" onClick={() => setScoreB((p) => p + 1)} aria-label="Increase score B">+</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="settings desktop-only">
                 <div className="setting">
                   <label htmlFor="min">Minutes</label>
                   <input
@@ -686,10 +741,54 @@ export default function Page() {
               </div>
             </header>
 
+            {showSettings && (
+              <div className="modal-overlay" onClick={() => setShowSettings(false)}>
+                <div className="modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h2 className="modal-title">Timer Settings</h2>
+                    <button type="button" className="btn-modal-close" onClick={() => setShowSettings(false)} aria-label="Close">
+                      <IconClose />
+                    </button>
+                  </div>
+                  <div className="settings modal-settings">
+                    <div className="setting">
+                      <label htmlFor="min-modal">Minutes</label>
+                      <input
+                        id="min-modal"
+                        type="number"
+                        min={0}
+                        max={99}
+                        inputMode="numeric"
+                        value={minutes}
+                        onChange={(e) => setMinutes(Number(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="setting">
+                      <label htmlFor="sec-modal">Seconds</label>
+                      <input
+                        id="sec-modal"
+                        type="number"
+                        min={0}
+                        max={59}
+                        inputMode="numeric"
+                        value={seconds}
+                        onChange={(e) => setSeconds(Math.min(59, Math.max(0, Number(e.target.value) || 0)))}
+                      />
+                    </div>
+                    <button type="button" className="btn-apply" onClick={() => { applyTime(); setShowSettings(false); }} aria-label="Apply">
+                      <IconCheck />
+                      <span className="btn-word">Apply</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {(state === "pregame" || state === "pregame_paused") && (
-              <div className="pregame-banner" aria-live="polite">
+              <div className="pregame-banner pregame-banner-full" aria-live="polite">
                 <div className="pregame-label">Pre-game thinking</div>
                 <div className="pregame-clock">{formatTime(pregameRemaining)}</div>
+                <div className="pregame-sub">{teamName(currentTeam)} plays first</div>
                 <div className="pregame-hint">
                   {state === "pregame_paused"
                     ? "Paused — resume when ready. Tap Finish to start play."
@@ -698,7 +797,7 @@ export default function Page() {
               </div>
             )}
 
-            <div className="teams">
+            <div className={`teams ${state === "pregame" || state === "pregame_paused" ? "hide-on-mobile" : ""}`}>
               {teamDisplayOrder.map((team) => {
                 const isA = team === "A";
                 const nameValue = isA ? teamAName : teamBName;
@@ -725,12 +824,12 @@ export default function Page() {
                     </div>
                     <div className="clock">{formatTime(timeValue)}</div>
                     <div className="subtext">
-                      {state === "ended" && timeValue === 0
-                        ? "Time up"
-                        : isCurrent && state === "running"
-                          ? "Clock running"
-                          : isCurrent && state === "paused"
-                            ? "Paused"
+                      {isCurrent && state === "running"
+                        ? "Clock running"
+                        : isCurrent && state === "paused"
+                          ? "Paused"
+                          : state === "ended"
+                            ? "Ended"
                             : "Ready"}
                     </div>
                   </section>

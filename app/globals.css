@@ -639,6 +639,219 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* Header layout */
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-settings {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-settings:active {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text);
+}
+
+.btn-settings .btn-icon-svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Desktop: hide settings gear, show inline settings */
+@media (min-width: 720px) {
+  .btn-settings {
+    display: none;
+  }
+}
+
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 720px) {
+  .desktop-only {
+    display: grid;
+  }
+}
+
+/* Scoreboard */
+.scoreboard {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+}
+
+.score-team {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.score-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.score-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.score-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 1.125rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s ease;
+}
+
+.score-btn:active {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.score-btn-plus {
+  color: var(--accent-bright);
+}
+
+.score-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 2ch;
+  text-align: center;
+}
+
+.score-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 6px;
+}
+
+/* Settings Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.btn-modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-modal-close:active {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.btn-modal-close .btn-icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+.modal-settings {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 0;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Pregame full-size on mobile */
+.pregame-sub {
+  margin-top: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent-bright);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -700,13 +913,28 @@ body {
     font-size: 0.75rem;
   }
 
-  .settings {
-    margin-top: 10px;
-    padding: 0;
-    gap: 8px;
-    background: transparent;
-    border: none;
-    border-radius: 0;
+  .settings.desktop-only {
+    display: none;
+  }
+
+  .scoreboard {
+    margin-top: 8px;
+    padding: 6px 8px;
+  }
+
+  .score-label {
+    font-size: 0.625rem;
+  }
+
+  .score-value {
+    font-size: 1.25rem;
+  }
+
+  .score-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 1rem;
+    border-radius: 7px;
   }
 
   .setting {
@@ -730,26 +958,40 @@ body {
     background: rgba(255, 255, 255, 0.08);
   }
 
+  .hide-on-mobile {
+    display: none !important;
+  }
+
   .pregame-banner {
-    flex-shrink: 0;
+    flex: 1;
+    min-height: 0;
     margin: 8px 12px 0;
-    padding: 10px 12px;
+    padding: 24px 16px;
     border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 
   .pregame-banner .pregame-label {
-    margin-bottom: 4px;
-    font-size: 0.625rem;
+    margin-bottom: 8px;
+    font-size: 0.75rem;
   }
 
   .pregame-banner .pregame-clock {
-    font-size: clamp(1.5rem, 7vw, 2rem);
-    font-weight: 700;
+    font-size: clamp(3rem, 16vw, 5rem);
+    font-weight: 800;
+  }
+
+  .pregame-banner .pregame-sub {
+    margin-top: 8px;
+    font-size: 1rem;
   }
 
   .pregame-banner .pregame-hint {
-    margin-top: 4px;
-    font-size: 0.6875rem;
+    margin-top: 10px;
+    font-size: 0.8125rem;
     line-height: 1.35;
   }
 
@@ -796,7 +1038,7 @@ body {
 
   .clock {
     margin-top: 6px;
-    font-size: clamp(1.35rem, 5.5vw, 1.85rem);
+    font-size: clamp(2rem, 10vw, 3rem);
     font-weight: 700;
   }
 
