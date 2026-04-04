@@ -146,6 +146,8 @@ export default function Page() {
   const pregameEndAnnouncedRef = useRef(false);
   const pregameMarksAnnouncedRef = useRef<Set<number>>(new Set());
   const turnMarksAnnouncedRef = useRef<Set<number>>(new Set());
+  /** After each reset, alternate who leads the next round (default Boys = A, first reset → Girls = B, …). */
+  const nextStarterAfterResetRef = useRef<Team>("B");
   const handlersRef = useRef({
     startGame: () => {},
     stopGame: () => {},
@@ -186,6 +188,11 @@ export default function Page() {
         return state;
     }
   }, [state]);
+
+  /** Active / starting team always first (left); other team second (right). */
+  const teamDisplayOrder = useMemo((): Team[] => {
+    return currentTeam === "A" ? ["A", "B"] : ["B", "A"];
+  }, [currentTeam]);
 
   const speak = useCallback((text: string, mode: "replace" | "queue" = "replace") => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -260,11 +267,10 @@ export default function Page() {
     if (pregameEndAnnouncedRef.current) return;
     pregameEndAnnouncedRef.current = true;
     turnMarksAnnouncedRef.current = new Set();
-    setCurrentTeam("A");
     setState("running");
     lastTickRef.current = performance.now();
-    pushLog(`Thinking time is over! It's ${teamName("A")}'s turn. Clock is running.`, true);
-  }, [state, pregameRemaining, pushLog, teamName]);
+    pushLog(`Thinking time is over! It's ${teamName(currentTeam)}'s turn. Clock is running.`, true);
+  }, [state, pregameRemaining, pushLog, teamName, currentTeam]);
 
   useEffect(() => {
     if (state !== "pregame") return;
@@ -299,7 +305,7 @@ export default function Page() {
       setPregameRemaining(PREGAME_SECONDS);
       setState("pregame");
       lastTickRef.current = performance.now();
-      pushLog(`Pre-game started. 90 seconds thinking time. ${teamName("A")} plays first.`, true);
+      pushLog(`Pre-game started. ${teamName(currentTeam)} plays first.`, true);
       return;
     }
     if (state === "pregame_paused") {
@@ -354,9 +360,8 @@ export default function Page() {
       setTimeA(total);
       setTimeB(total);
       lastTickRef.current = performance.now();
-      setCurrentTeam("A");
       setState("running");
-      pushLog(`Pre-game finished. It's ${teamName("A")}'s turn! ${formatTime(total)} on the clock.`, true);
+      pushLog(`Pre-game finished. It's ${teamName(currentTeam)}'s turn! ${formatTime(total)} on the clock.`, true);
       return;
     }
 
@@ -380,11 +385,13 @@ export default function Page() {
     pregameEndAnnouncedRef.current = false;
     pregameMarksAnnouncedRef.current = new Set();
     turnMarksAnnouncedRef.current = new Set();
-    setCurrentTeam("A");
+    const starter = nextStarterAfterResetRef.current;
+    nextStarterAfterResetRef.current = starter === "A" ? "B" : "A";
+    setCurrentTeam(starter);
     setState("idle");
     lastTickRef.current = null;
-    pushLog("Game reset. Tap Start for a new round.", true);
-  }, [minutes, seconds, pushLog]);
+    pushLog(`Game reset. ${teamName(starter)} starts next. Tap Start for a new round.`, true);
+  }, [minutes, seconds, pushLog, teamName]);
 
   const applyTime = useCallback(() => {
     const total = Math.max(1, minutes * 60 + seconds);
@@ -692,55 +699,43 @@ export default function Page() {
             )}
 
             <div className="teams">
-              <section className={`team ${currentTeam === "A" ? "active" : ""}`} aria-label={teamName("A")}>
-                <div className="team-head">
-                  <input
-                    className="team-name-input"
-                    value={teamAName}
-                    onChange={(e) => setTeamAName(e.target.value)}
-                    aria-label="First team name"
-                    autoComplete="off"
-                  />
-                  <span className={`badge ${currentTeam === "A" ? "on" : "wait"}`}>
-                    {currentTeam === "A" ? (state === "running" ? "Playing" : "Turn") : "Waiting"}
-                  </span>
-                </div>
-                <div className="clock">{formatTime(timeA)}</div>
-                <div className="subtext">
-                  {state === "ended" && timeA === 0
-                    ? "Time up"
-                    : currentTeam === "A" && state === "running"
-                      ? "Clock running"
-                      : currentTeam === "A" && state === "paused"
-                        ? "Paused"
-                        : "Ready"}
-                </div>
-              </section>
-
-              <section className={`team ${currentTeam === "B" ? "active" : ""}`} aria-label={teamName("B")}>
-                <div className="team-head">
-                  <input
-                    className="team-name-input"
-                    value={teamBName}
-                    onChange={(e) => setTeamBName(e.target.value)}
-                    aria-label="Second team name"
-                    autoComplete="off"
-                  />
-                  <span className={`badge ${currentTeam === "B" ? "on" : "wait"}`}>
-                    {currentTeam === "B" ? (state === "running" ? "Playing" : "Turn") : "Waiting"}
-                  </span>
-                </div>
-                <div className="clock">{formatTime(timeB)}</div>
-                <div className="subtext">
-                  {state === "ended" && timeB === 0
-                    ? "Time up"
-                    : currentTeam === "B" && state === "running"
-                      ? "Clock running"
-                      : currentTeam === "B" && state === "paused"
-                        ? "Paused"
-                        : "Ready"}
-                </div>
-              </section>
+              {teamDisplayOrder.map((team) => {
+                const isA = team === "A";
+                const nameValue = isA ? teamAName : teamBName;
+                const setName = isA ? setTeamAName : setTeamBName;
+                const timeValue = isA ? timeA : timeB;
+                const isCurrent = currentTeam === team;
+                return (
+                  <section
+                    key={team}
+                    className={`team ${isCurrent ? "active" : ""}`}
+                    aria-label={teamName(team)}
+                  >
+                    <div className="team-head">
+                      <input
+                        className="team-name-input"
+                        value={nameValue}
+                        onChange={(e) => setName(e.target.value)}
+                        aria-label={`${teamName(team)} name`}
+                        autoComplete="off"
+                      />
+                      <span className={`badge ${isCurrent ? "on" : "wait"}`}>
+                        {isCurrent ? (state === "running" ? "Playing" : "Turn") : "Waiting"}
+                      </span>
+                    </div>
+                    <div className="clock">{formatTime(timeValue)}</div>
+                    <div className="subtext">
+                      {state === "ended" && timeValue === 0
+                        ? "Time up"
+                        : isCurrent && state === "running"
+                          ? "Clock running"
+                          : isCurrent && state === "paused"
+                            ? "Paused"
+                            : "Ready"}
+                    </div>
+                  </section>
+                );
+              })}
             </div>
           </div>
 
