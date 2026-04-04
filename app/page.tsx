@@ -322,8 +322,13 @@ export default function Page() {
     setCurrentTeam(starter);
     setState("idle");
     lastTickRef.current = null;
-    pushLog(`Game reset. ${teamName(starter)} starts next.`, true);
   }, [minutes, seconds, pushLog, teamName]);
+
+  const newGame = useCallback(() => {
+    setScoreA(0);
+    setScoreB(0);
+    resetGame();
+  }, [resetGame]);
 
   const applyTime = useCallback(() => {
     const total = Math.max(1, minutes * 60 + seconds);
@@ -366,18 +371,24 @@ export default function Page() {
           <div className="card-body">
             <header className="header">
               <div className="header-top">
-                <div className="header-left">
-                  <h1 className="title">Code-Name timer</h1>
-             
+                <div className="header-bar">
+                  <div className="header-bar-start">
+                    <button type="button" className="btn-header btn-header-new" onClick={newGame} aria-label="New game">
+                      New Game
+                    </button>
+                  </div>
+                  <h1 className="title header-title-center">Code-Name timer</h1>
+                  <div className="header-bar-end">
+                    <button
+                      type="button"
+                      className="btn-settings"
+                      onClick={() => setShowSettings(true)}
+                      aria-label="Settings"
+                    >
+                      <IconSettings />
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="btn-settings"
-                  onClick={() => setShowSettings(true)}
-                  aria-label="Settings"
-                >
-                  <IconSettings />
-                </button>
               </div>
 
               <div className="settings desktop-only">
