@@ -518,10 +518,7 @@ export default function Page() {
                         {isCurrent ? (state === "running" ? "Playing" : "Turn") : "Waiting"}
                       </span>
                     </div>
-                    <div className="team-bank">
-                      <span className="team-bank-label">Bank</span>
-                      <span className="team-bank-time">{formatTime(timeValue)}</span>
-                    </div>
+
                     <div className="subtext">
                       {isCurrent && state === "running"
                         ? "On the clock"
