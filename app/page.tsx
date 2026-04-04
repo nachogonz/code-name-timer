@@ -469,7 +469,16 @@ export default function Page() {
             )}
 
             {state !== "pregame" && state !== "pregame_paused" && (
-              <div className="game-timer-hero" aria-live="polite">
+              <div
+                className={`game-timer-hero ${
+                  state === "idle"
+                    ? "game-timer-hero--idle"
+                    : currentTeam === "A"
+                      ? "game-timer-hero--team-a"
+                      : "game-timer-hero--team-b"
+                }`}
+                aria-live="polite"
+              >
                 {state === "idle" ? (
                   <p className="game-timer-eyebrow game-timer-eyebrow-idle">Time per turn</p>
                 ) : (
@@ -508,7 +517,7 @@ export default function Page() {
                 return (
                   <section
                     key={team}
-                    className={`team ${isCurrent ? "active" : ""}`}
+                    className={`team ${isA ? "team--a" : "team--b"} ${isCurrent ? "active" : ""}`}
                     aria-label={teamName(team)}
                   >
                     <div className="team-head">
