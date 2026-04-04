@@ -372,38 +372,67 @@ body {
 /* Primary game clock — full width above Boys / Girls columns */
 .game-timer-hero {
   text-align: center;
-  padding: 14px 18px 18px;
+  padding: 12px 16px 14px;
   flex-shrink: 0;
   border-bottom: 0.5px solid var(--ios-separator);
   background: linear-gradient(
     180deg,
-    rgba(10, 132, 255, 0.06) 0%,
+    rgba(10, 132, 255, 0.08) 0%,
     transparent 100%
   );
 }
 
 .game-timer-eyebrow {
-  margin: 0 0 8px;
-  font-size: 0.6875rem;
-  font-weight: 600;
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   color: var(--accent-bright);
 }
 
+.game-timer-eyebrow-idle {
+  font-size: clamp(0.8125rem, 2vw, 0.9375rem);
+}
+
+.game-timer-turn-block {
+  margin: 0 auto 8px;
+  max-width: 22rem;
+}
+
+.game-timer-kicker {
+  margin: 0 0 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--accent-bright);
+}
+
+.game-timer-turn-name {
+  margin: 0;
+  font-size: clamp(1.35rem, 4.5vw, 1.85rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--text);
+  text-wrap: balance;
+}
+
 .game-timer-clock {
-  font-size: clamp(3.25rem, 14vw, 5rem);
+  font-size: clamp(4rem, 17vw, 6.5rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.045em;
   font-feature-settings: "tnum" 1, "ss01" 1;
+  color: var(--text);
 }
 
 .game-timer-status {
-  margin: 10px 0 0;
-  font-size: 0.875rem;
-  font-weight: 500;
+  margin: 8px 0 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
   color: var(--muted);
 }
 
@@ -437,11 +466,19 @@ body {
 @media (min-width: 720px) {
   .game-timer-hero {
     border-bottom-color: var(--border);
-    padding: 18px 24px 22px;
+    padding: 16px 24px 18px;
+  }
+
+  .game-timer-turn-name {
+    font-size: clamp(1.5rem, 2.2vw, 1.95rem);
   }
 
   .game-timer-clock {
-    font-size: clamp(3.5rem, 8vw, 4.5rem);
+    font-size: clamp(4.25rem, 9vw, 5.75rem);
+  }
+
+  .game-timer-status {
+    font-size: 1rem;
   }
 }
 
@@ -1059,21 +1096,36 @@ body {
   }
 
   .game-timer-hero {
-    padding: 8px 12px 10px;
+    padding: 6px 10px 8px;
   }
 
-  .game-timer-eyebrow {
+  .game-timer-eyebrow-idle {
+    margin-bottom: 6px;
+    font-size: clamp(0.75rem, 2.8vw, 0.875rem);
+  }
+
+  .game-timer-turn-block {
     margin-bottom: 4px;
+  }
+
+  .game-timer-kicker {
     font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    margin-bottom: 2px;
+  }
+
+  .game-timer-turn-name {
+    font-size: clamp(1.2rem, 5vw, 1.55rem);
   }
 
   .game-timer-clock {
-    font-size: clamp(2.75rem, 13vw, 4rem);
+    font-size: clamp(3.65rem, 17vw, 5.25rem);
   }
 
   .game-timer-status {
-    margin-top: 6px;
-    font-size: 0.75rem;
+    margin-top: 5px;
+    font-size: 0.8125rem;
+    font-weight: 600;
   }
 
   .team-bank {

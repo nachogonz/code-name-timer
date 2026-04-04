@@ -470,9 +470,14 @@ export default function Page() {
 
             {state !== "pregame" && state !== "pregame_paused" && (
               <div className="game-timer-hero" aria-live="polite">
-                <p className="game-timer-eyebrow">
-                  {state === "idle" ? "Time per turn" : teamName(currentTeam)}
-                </p>
+                {state === "idle" ? (
+                  <p className="game-timer-eyebrow game-timer-eyebrow-idle">Time per turn</p>
+                ) : (
+                  <div className="game-timer-turn-block">
+                    <p className="game-timer-kicker">Current turn</p>
+                    <p className="game-timer-turn-name">{teamName(currentTeam)}</p>
+                  </div>
+                )}
                 <div className="game-timer-clock">
                   {formatTime(currentTeam === "A" ? timeA : timeB)}
                 </div>
