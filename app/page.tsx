@@ -390,7 +390,7 @@ export default function Page() {
     setCurrentTeam(starter);
     setState("idle");
     lastTickRef.current = null;
-    pushLog(`Game reset. ${teamName(starter)} starts next. Tap Start for a new round.`, true);
+    pushLog(`Game reset. ${teamName(starter)} starts next.`, true);
   }, [minutes, seconds, pushLog, teamName]);
 
   const applyTime = useCallback(() => {
