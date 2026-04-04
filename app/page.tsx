@@ -367,7 +367,7 @@ export default function Page() {
             <header className="header">
               <div className="header-top">
                 <div className="header-left">
-                  <h1 className="title">Code-Name voice timer</h1>
+                  <h1 className="title">Code-Name timer</h1>
              
                 </div>
                 <button
