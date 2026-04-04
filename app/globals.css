@@ -249,7 +249,7 @@ body {
 }
 
 .pregame-banner .pregame-clock {
-  font-size: clamp(2.25rem, 10vw, 3rem);
+  font-size: clamp(2.85rem, 12vw, 3.75rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
@@ -520,7 +520,7 @@ body {
 }
 
 .game-timer-clock {
-  font-size: clamp(4rem, 17vw, 6.5rem);
+  font-size: clamp(4.55rem, 19vw, 7.35rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -558,7 +558,7 @@ body {
 }
 
 .team-bank-time {
-  font-size: 1.0625rem;
+  font-size: 1.1875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text);
@@ -575,7 +575,7 @@ body {
   }
 
   .game-timer-clock {
-    font-size: clamp(4.25rem, 9vw, 5.75rem);
+    font-size: clamp(4.85rem, 10vw, 6.6rem);
   }
 
   .game-timer-status {
@@ -1159,7 +1159,7 @@ body {
   }
 
   .pregame-banner .pregame-clock {
-    font-size: clamp(3rem, 16vw, 5rem);
+    font-size: clamp(3.65rem, 18.5vw, 5.85rem);
     font-weight: 800;
   }
 
@@ -1244,7 +1244,7 @@ body {
   }
 
   .game-timer-clock {
-    font-size: clamp(3.65rem, 17vw, 5.25rem);
+    font-size: clamp(4.25rem, 19.5vw, 6.1rem);
   }
 
   .game-timer-status {
@@ -1264,7 +1264,7 @@ body {
   }
 
   .team-bank-time {
-    font-size: clamp(0.98rem, 3.6vw, 1.2rem);
+    font-size: clamp(1.1rem, 4.1vw, 1.38rem);
   }
 
   .team .subtext {
