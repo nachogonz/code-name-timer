@@ -239,14 +239,10 @@ export default function Page() {
   useEffect(() => {
     if (state !== "pregame") return;
     const sec = Math.ceil(pregameRemaining);
-    const marks = [60, 30] as const;
-    for (const mark of marks) {
-      if (sec === mark && !pregameMarksAnnouncedRef.current.has(mark)) {
-        pregameMarksAnnouncedRef.current.add(mark);
-        const line =
-          mark === 60 ? "1 minute remaining." : `${mark} seconds remaining.`;
-        speak(line, "queue");
-      }
+    const mark = 45;
+    if (sec === mark && !pregameMarksAnnouncedRef.current.has(mark)) {
+      pregameMarksAnnouncedRef.current.add(mark);
+      speak("45 seconds remaining.", "queue");
     }
   }, [state, pregameRemaining, speak]);
 
@@ -254,14 +250,10 @@ export default function Page() {
     if (state !== "running") return;
     const t = currentTeam === "A" ? timeA : timeB;
     const sec = Math.ceil(t);
-    const marks = [60, 30] as const;
-    for (const mark of marks) {
-      if (sec === mark && !turnMarksAnnouncedRef.current.has(mark)) {
-        turnMarksAnnouncedRef.current.add(mark);
-        const line =
-          mark === 60 ? "Game. 1 minute left." : `Game. ${mark} seconds left.`;
-        speak(line, "queue");
-      }
+    const mark = 45;
+    if (sec === mark && !turnMarksAnnouncedRef.current.has(mark)) {
+      turnMarksAnnouncedRef.current.add(mark);
+      speak("Game. 45 seconds left.", "queue");
     }
   }, [state, currentTeam, timeA, timeB, speak]);
 
