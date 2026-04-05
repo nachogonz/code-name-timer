@@ -1,6 +1,6 @@
 "use client";
 
-import { Howl } from "howler";
+import { Howl, Howler } from "howler";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Team = "A" | "B";
@@ -182,13 +182,19 @@ export default function Page() {
     window.speechSynthesis.speak(u);
   }, []);
 
-  /** Howler.js handles iOS audio unlocking, context suspension, and re-activation internally. */
+  /**
+   * Howler suspends Web Audio after 30s idle (`autoSuspend`). Pregame is 90s — context goes
+   * suspended before the last-10s ticks; iOS then blocks `resume()` from timer-driven `play()`.
+   * Disable auto-suspend and use HTML5 Audio for this beep so ticks are not gated on WA resume.
+   */
   useEffect(() => {
+    Howler.autoSuspend = false;
     beepRef.current = new Howl({
       src: [getBeepBlobUrl()],
       format: ["wav"],
       volume: 0.45,
       preload: true,
+      html5: true,
     });
     return () => {
       beepRef.current?.unload();
