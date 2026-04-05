@@ -143,25 +143,58 @@ export default function Page() {
     window.speechSynthesis.speak(u);
   }, []);
 
-  const playLastTenTick = useCallback(() => {
-    if (typeof window === "undefined") return;
+  /** Mobile Chrome/iOS need AudioContext.resume() after a user gesture; resume() is async — schedule beeps only once running. */
+  const ensureAudioContextRunning = useCallback(async (): Promise<AudioContext | null> => {
+    if (typeof window === "undefined") return null;
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+    if (!Ctx) return null;
+    if (!audioCtxRef.current) {
+      try {
+        audioCtxRef.current = new Ctx({ latencyHint: "interactive" });
+      } catch {
+        return null;
+      }
+    }
     const ctx = audioCtxRef.current;
-    if (ctx.state === "suspended") void ctx.resume();
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 920;
-    gain.gain.setValueAtTime(0.11, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.08);
+    if (ctx.state === "suspended") {
+      try {
+        await ctx.resume();
+      } catch {
+        return null;
+      }
+    }
+    return ctx.state === "running" ? ctx : null;
   }, []);
+
+  /** Call from button handlers so the graph is unlocked before the last-10s timer fires (not a user gesture). */
+  const primeWebAudioFromUserGesture = useCallback(() => {
+    void ensureAudioContextRunning();
+  }, [ensureAudioContextRunning]);
+
+  const playLastTenTick = useCallback(() => {
+    void (async () => {
+      const ctx = await ensureAudioContextRunning();
+      if (!ctx) return;
+
+      const t0 = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      // Linear ramps avoid exponentialRamp edge cases on some mobile engines; tiny floor avoids -∞ dB issues.
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.linearRampToValueAtTime(0.1, t0 + 0.004);
+      gain.gain.linearRampToValueAtTime(0.0001, t0 + 0.072);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      try {
+        osc.start(t0);
+        osc.stop(t0 + 0.085);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [ensureAudioContextRunning]);
 
   const pushLog = useCallback(
     (message: string, say = false) => {
@@ -225,6 +258,17 @@ export default function Page() {
     }, 100);
     return () => window.clearInterval(id);
   }, [updateRunningTime, updatePregameTime]);
+
+  /** Tab backgrounding suspends AudioContext on many mobile browsers — resume when visible. */
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      const ctx = audioCtxRef.current;
+      if (ctx?.state === "suspended") void ctx.resume().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
 
   useEffect(() => {
     if (state !== "pregame" || pregameRemaining > 0) return;
@@ -342,6 +386,7 @@ export default function Page() {
 
   const finishTurn = useCallback(() => {
     if (state === "ended" || state === "idle") return;
+    primeWebAudioFromUserGesture();
 
     if (state === "pregame" || state === "pregame_paused") {
       turnMarksAnnouncedRef.current = new Set();
@@ -364,9 +409,10 @@ export default function Page() {
     setState("running");
     lastTickRef.current = performance.now();
     pushLog(`It's ${teamName(nextTeam)}'s turn.`, true);
-  }, [state, currentTeam, minutes, seconds, pushLog, updateRunningTime, teamName]);
+  }, [state, currentTeam, minutes, seconds, pushLog, updateRunningTime, teamName, primeWebAudioFromUserGesture]);
 
   const resetGame = useCallback(() => {
+    primeWebAudioFromUserGesture();
     const total = Math.max(1, minutes * 60 + seconds);
     setTimeA(total);
     setTimeB(total);
@@ -379,13 +425,14 @@ export default function Page() {
     setCurrentTeam(starter);
     setState("idle");
     lastTickRef.current = null;
-  }, [minutes, seconds, pushLog, teamName]);
+  }, [minutes, seconds, pushLog, teamName, primeWebAudioFromUserGesture]);
 
   const newGame = useCallback(() => {
+    primeWebAudioFromUserGesture();
     setScoreA(0);
     setScoreB(0);
     resetGame();
-  }, [resetGame]);
+  }, [resetGame, primeWebAudioFromUserGesture]);
 
   const applyTime = useCallback(() => {
     const total = Math.max(1, minutes * 60 + seconds);
@@ -423,6 +470,7 @@ export default function Page() {
     state === "pregame" && pregameSecondsCeil <= 10 && pregameSecondsCeil >= 1;
 
   const onPrimary = () => {
+    primeWebAudioFromUserGesture();
     if (state === "ended") return;
     if (state === "running" || state === "pregame") stopGame();
     else startGame();
