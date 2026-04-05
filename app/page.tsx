@@ -16,6 +16,26 @@ function formatTime(totalSeconds: number) {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
+/** Schedule a short beep — must run with a running AudioContext (primed via user gesture on iOS). */
+function scheduleUrgentBeep(ctx: AudioContext) {
+  const t0 = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = 880;
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.linearRampToValueAtTime(0.1, t0 + 0.004);
+  gain.gain.linearRampToValueAtTime(0.0001, t0 + 0.072);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  try {
+    osc.start(t0);
+    osc.stop(t0 + 0.085);
+  } catch {
+    /* ignore */
+  }
+}
+
 function IconPlay() {
   return (
     <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -143,7 +163,40 @@ export default function Page() {
     window.speechSynthesis.speak(u);
   }, []);
 
-  /** Mobile Chrome/iOS need AudioContext.resume() after a user gesture; resume() is async — schedule beeps only once running. */
+  /**
+   * iOS Safari / Chrome (WebKit): audio must be unlocked synchronously inside the tap handler.
+   * `await ctx.resume()` runs after the gesture ends — WebKit then blocks timer-driven beeps.
+   * Pattern: resume() without awaiting + play a 1-frame silent buffer in the same synchronous stack.
+   */
+  const primeWebAudioFromUserGesture = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtxRef.current) {
+      try {
+        audioCtxRef.current = new Ctx({ latencyHint: "interactive" });
+      } catch {
+        return;
+      }
+    }
+    const ctx = audioCtxRef.current;
+    try {
+      void ctx.resume();
+    } catch {
+      /* ignore */
+    }
+    try {
+      const buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  /** Fallback for non‑iOS paths if context not yet running when the timer fires. */
   const ensureAudioContextRunning = useCallback(async (): Promise<AudioContext | null> => {
     if (typeof window === "undefined") return null;
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -166,33 +219,15 @@ export default function Page() {
     return ctx.state === "running" ? ctx : null;
   }, []);
 
-  /** Call from button handlers so the graph is unlocked before the last-10s timer fires (not a user gesture). */
-  const primeWebAudioFromUserGesture = useCallback(() => {
-    void ensureAudioContextRunning();
-  }, [ensureAudioContextRunning]);
-
   const playLastTenTick = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    if (ctx?.state === "running") {
+      scheduleUrgentBeep(ctx);
+      return;
+    }
     void (async () => {
-      const ctx = await ensureAudioContextRunning();
-      if (!ctx) return;
-
-      const t0 = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = 880;
-      // Linear ramps avoid exponentialRamp edge cases on some mobile engines; tiny floor avoids -∞ dB issues.
-      gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.linearRampToValueAtTime(0.1, t0 + 0.004);
-      gain.gain.linearRampToValueAtTime(0.0001, t0 + 0.072);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      try {
-        osc.start(t0);
-        osc.stop(t0 + 0.085);
-      } catch {
-        /* ignore */
-      }
+      const c = await ensureAudioContextRunning();
+      if (c) scheduleUrgentBeep(c);
     })();
   }, [ensureAudioContextRunning]);
 
@@ -269,6 +304,16 @@ export default function Page() {
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
+
+  /** iOS: first touch anywhere must run the sync unlock if the user didn’t hit a control yet. */
+  useEffect(() => {
+    const unlock = () => {
+      primeWebAudioFromUserGesture();
+      window.removeEventListener("pointerdown", unlock, true);
+    };
+    window.addEventListener("pointerdown", unlock, true);
+    return () => window.removeEventListener("pointerdown", unlock, true);
+  }, [primeWebAudioFromUserGesture]);
 
   useEffect(() => {
     if (state !== "pregame" || pregameRemaining > 0) return;
