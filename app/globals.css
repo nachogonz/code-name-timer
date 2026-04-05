@@ -997,6 +997,21 @@ body {
   background: rgba(48, 209, 88, 0.28);
 }
 
+.btn-header-icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-header-icon .btn-icon-svg {
+  width: 20px;
+  height: 20px;
+}
+
 .btn-settings {
   flex-shrink: 0;
   width: 40px;

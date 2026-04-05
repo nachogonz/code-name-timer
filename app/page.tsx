@@ -73,6 +73,15 @@ function IconClose() {
   );
 }
 
+/** New game — add / fresh match */
+function IconNewGame() {
+  return (
+    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
+    </svg>
+  );
+}
+
 export default function Page() {
   const [minutes, setMinutes] = useState(1);
   const [seconds, setSeconds] = useState(30);
@@ -230,11 +239,13 @@ export default function Page() {
   useEffect(() => {
     if (state !== "pregame") return;
     const sec = Math.ceil(pregameRemaining);
-    const marks = [60, 30];
+    const marks = [60, 30] as const;
     for (const mark of marks) {
       if (sec === mark && !pregameMarksAnnouncedRef.current.has(mark)) {
         pregameMarksAnnouncedRef.current.add(mark);
-        speak(`${mark} seconds remaining.`, "queue");
+        const line =
+          mark === 60 ? "1 minute remaining." : `${mark} seconds remaining.`;
+        speak(line, "queue");
       }
     }
   }, [state, pregameRemaining, speak]);
@@ -243,11 +254,13 @@ export default function Page() {
     if (state !== "running") return;
     const t = currentTeam === "A" ? timeA : timeB;
     const sec = Math.ceil(t);
-    const marks = [60, 30];
+    const marks = [60, 30] as const;
     for (const mark of marks) {
       if (sec === mark && !turnMarksAnnouncedRef.current.has(mark)) {
         turnMarksAnnouncedRef.current.add(mark);
-        speak(`Game. ${mark} seconds left.`, "queue");
+        const line =
+          mark === 60 ? "Game. 1 minute left." : `Game. ${mark} seconds left.`;
+        speak(line, "queue");
       }
     }
   }, [state, currentTeam, timeA, timeB, speak]);
@@ -294,7 +307,7 @@ export default function Page() {
       setPregameRemaining(PREGAME_SECONDS);
       setState("pregame");
       lastTickRef.current = performance.now();
-      pushLog(`Pre-game started`, true);
+      pushLog(`Pre-game started.`, true);
       return;
     }
     if (state === "pregame_paused") {
@@ -345,7 +358,7 @@ export default function Page() {
       setTimeB(total);
       lastTickRef.current = performance.now();
       setState("running");
-      pushLog(`Pre-game finished.`, true);
+      pushLog(`Pre-game finished. ${teamName(currentTeam)} plays.`, true);
       return;
     }
 
@@ -432,8 +445,13 @@ export default function Page() {
               <div className="header-top">
                 <div className="header-bar">
                   <div className="header-bar-start">
-                    <button type="button" className="btn-header btn-header-new" onClick={newGame} aria-label="New game">
-                      New Game
+                    <button
+                      type="button"
+                      className="btn-header btn-header-new btn-header-icon"
+                      onClick={newGame}
+                      aria-label="New game"
+                    >
+                      <IconNewGame />
                     </button>
                   </div>
                   <h1 className="title header-title-center">Code-Name timer</h1>
