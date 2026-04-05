@@ -149,7 +149,7 @@ export default function Page() {
       setCurrentTeam(nextTeam);
       setState("running");
       lastTickRef.current = performance.now();
-      pushLog(`Time's up for ${teamName(timedOut)}! It's ${teamName(nextTeam)}'s turn now.`, true);
+      pushLog(`Time's up! ${teamName(nextTeam)}'s turn.`, true);
     },
     [pushLog, teamName, minutes, seconds]
   );
@@ -201,7 +201,7 @@ export default function Page() {
     turnMarksAnnouncedRef.current = new Set();
     setState("running");
     lastTickRef.current = performance.now();
-    pushLog(`Thinking time is over! It's ${teamName(currentTeam)}'s turn. Clock is running.`, true);
+    pushLog(`Thinking time over!`, true);
   }, [state, pregameRemaining, pushLog, teamName, currentTeam]);
 
   useEffect(() => {
@@ -211,7 +211,7 @@ export default function Page() {
     for (const mark of marks) {
       if (sec === mark && !pregameMarksAnnouncedRef.current.has(mark)) {
         pregameMarksAnnouncedRef.current.add(mark);
-        speak(`Pre-game. ${mark} seconds remaining.`, "queue");
+        speak(`${mark} seconds remaining.`, "queue");
       }
     }
   }, [state, pregameRemaining, speak]);
@@ -224,7 +224,7 @@ export default function Page() {
     for (const mark of marks) {
       if (sec === mark && !turnMarksAnnouncedRef.current.has(mark)) {
         turnMarksAnnouncedRef.current.add(mark);
-        speak(`${teamName(currentTeam)}. ${mark} seconds left.`, "queue");
+        speak(`Game. ${mark} seconds left.`, "queue");
       }
     }
   }, [state, currentTeam, timeA, timeB, teamName, speak]);
@@ -237,19 +237,17 @@ export default function Page() {
       setPregameRemaining(PREGAME_SECONDS);
       setState("pregame");
       lastTickRef.current = performance.now();
-      pushLog(`Pre-game started. ${teamName(currentTeam)} plays first.`, true);
+      pushLog(`Pre-game started`, true);
       return;
     }
     if (state === "pregame_paused") {
       setState("pregame");
       lastTickRef.current = performance.now();
-      pushLog("Pre-game resumed.", true);
       return;
     }
     if (state === "paused") {
       setState("running");
       lastTickRef.current = performance.now();
-      pushLog(`${teamName(currentTeam)} resumed. Clock running.`, true);
     }
   }, [state, currentTeam, pushLog, teamName]);
 
@@ -258,14 +256,12 @@ export default function Page() {
       updateRunningTime();
       setState("paused");
       lastTickRef.current = null;
-      pushLog(`Paused. ${teamName(currentTeam)}'s clock stopped.`, true);
       return;
     }
     if (state === "pregame") {
       updatePregameTime();
       setState("pregame_paused");
       lastTickRef.current = null;
-      pushLog("Pre-game paused.", true);
     }
   }, [state, currentTeam, pushLog, updateRunningTime, updatePregameTime]);
 
@@ -273,13 +269,12 @@ export default function Page() {
     if (state === "paused") {
       setState("running");
       lastTickRef.current = performance.now();
-      pushLog(`Resumed. ${teamName(currentTeam)}'s clock running.`, true);
+      pushLog(`Resumed.`, true);
       return;
     }
     if (state === "pregame_paused") {
       setState("pregame");
       lastTickRef.current = performance.now();
-      pushLog("Pre-game resumed.", true);
     }
   }, [state, currentTeam, pushLog]);
 
@@ -293,7 +288,7 @@ export default function Page() {
       setTimeB(total);
       lastTickRef.current = performance.now();
       setState("running");
-      pushLog(`Pre-game finished. It's ${teamName(currentTeam)}'s turn! ${formatTime(total)} on the clock.`, true);
+      pushLog(`Pre-game finished.`, true);
       return;
     }
 
@@ -306,7 +301,7 @@ export default function Page() {
     setCurrentTeam(nextTeam);
     setState("running");
     lastTickRef.current = performance.now();
-    pushLog(`Finish! It's ${teamName(nextTeam)}'s turn now. ${formatTime(total)} on the clock.`, true);
+    pushLog(`It's ${teamName(nextTeam)}'s turn.`, true);
   }, [state, currentTeam, minutes, seconds, pushLog, updateRunningTime, teamName]);
 
   const resetGame = useCallback(() => {
