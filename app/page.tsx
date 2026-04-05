@@ -89,6 +89,9 @@ export default function Page() {
   const [showSettings, setShowSettings] = useState(false);
 
   const lastTickRef = useRef<number | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const pregameLastUrgentSecRef = useRef<number | null>(null);
+  const turnLastUrgentSecRef = useRef<number | null>(null);
   const pregameEndAnnouncedRef = useRef(false);
   const pregameMarksAnnouncedRef = useRef<Set<number>>(new Set());
   const turnMarksAnnouncedRef = useRef<Set<number>>(new Set());
@@ -129,6 +132,26 @@ export default function Page() {
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1;
     window.speechSynthesis.speak(u);
+  }, []);
+
+  const playLastTenTick = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+    const ctx = audioCtxRef.current;
+    if (ctx.state === "suspended") void ctx.resume();
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 920;
+    gain.gain.setValueAtTime(0.11, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.08);
   }, []);
 
   const pushLog = useCallback(
@@ -207,7 +230,7 @@ export default function Page() {
   useEffect(() => {
     if (state !== "pregame") return;
     const sec = Math.ceil(pregameRemaining);
-    const marks = [60, 30, 10, 5];
+    const marks = [60, 30];
     for (const mark of marks) {
       if (sec === mark && !pregameMarksAnnouncedRef.current.has(mark)) {
         pregameMarksAnnouncedRef.current.add(mark);
@@ -220,14 +243,48 @@ export default function Page() {
     if (state !== "running") return;
     const t = currentTeam === "A" ? timeA : timeB;
     const sec = Math.ceil(t);
-    const marks = [60, 30, 10, 5];
+    const marks = [60, 30];
     for (const mark of marks) {
       if (sec === mark && !turnMarksAnnouncedRef.current.has(mark)) {
         turnMarksAnnouncedRef.current.add(mark);
         speak(`Game. ${mark} seconds left.`, "queue");
       }
     }
-  }, [state, currentTeam, timeA, timeB, teamName, speak]);
+  }, [state, currentTeam, timeA, timeB, speak]);
+
+  /** Short tick sound once per second for the last 10 seconds (replaces voice at 10 and 5). */
+  useEffect(() => {
+    if (state !== "pregame") {
+      pregameLastUrgentSecRef.current = null;
+      return;
+    }
+    const sec = Math.ceil(pregameRemaining);
+    if (sec > 10 || sec < 1) {
+      pregameLastUrgentSecRef.current = sec;
+      return;
+    }
+    if (pregameLastUrgentSecRef.current !== sec) {
+      pregameLastUrgentSecRef.current = sec;
+      playLastTenTick();
+    }
+  }, [state, pregameRemaining, playLastTenTick]);
+
+  useEffect(() => {
+    if (state !== "running") {
+      turnLastUrgentSecRef.current = null;
+      return;
+    }
+    const t = currentTeam === "A" ? timeA : timeB;
+    const sec = Math.ceil(t);
+    if (sec > 10 || sec < 1) {
+      turnLastUrgentSecRef.current = sec;
+      return;
+    }
+    if (turnLastUrgentSecRef.current !== sec) {
+      turnLastUrgentSecRef.current = sec;
+      playLastTenTick();
+    }
+  }, [state, currentTeam, timeA, timeB, playLastTenTick]);
 
   const startGame = useCallback(() => {
     if (state === "ended") return;
@@ -353,6 +410,13 @@ export default function Page() {
   const primaryIcon =
     state === "pregame" || state === "running" ? <IconPause /> : <IconPlay />;
 
+  const activeTurnSecondsCeil = Math.ceil(currentTeam === "A" ? timeA : timeB);
+  const isLastTenGame =
+    state === "running" && activeTurnSecondsCeil <= 10 && activeTurnSecondsCeil >= 1;
+  const pregameSecondsCeil = Math.ceil(pregameRemaining);
+  const isLastTenPregame =
+    state === "pregame" && pregameSecondsCeil <= 10 && pregameSecondsCeil >= 1;
+
   const onPrimary = () => {
     if (state === "ended") return;
     if (state === "running" || state === "pregame") stopGame();
@@ -462,7 +526,10 @@ export default function Page() {
             )}
 
             {(state === "pregame" || state === "pregame_paused") && (
-              <div className="pregame-banner pregame-banner-full" aria-live="polite">
+              <div
+                className={`pregame-banner pregame-banner-full ${isLastTenPregame ? "pregame-banner--urgent" : ""}`}
+                aria-live="polite"
+              >
                 <div className="pregame-label">Pre-game thinking</div>
                 <div className="pregame-clock">{formatTime(pregameRemaining)}</div>
                 <div className="pregame-sub">{teamName(currentTeam)} plays first</div>
@@ -482,7 +549,7 @@ export default function Page() {
                     : currentTeam === "A"
                       ? "game-timer-hero--team-a"
                       : "game-timer-hero--team-b"
-                }`}
+                } ${isLastTenGame ? "game-timer-hero--urgent" : ""}`}
                 aria-live="polite"
               >
                 {state === "idle" ? (

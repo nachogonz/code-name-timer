@@ -261,6 +261,45 @@ body {
   color: var(--muted);
 }
 
+.pregame-banner--urgent {
+  background: linear-gradient(
+    165deg,
+    rgba(239, 68, 68, 0.22) 0%,
+    rgba(185, 28, 28, 0.14) 100%
+  ) !important;
+  border-color: rgba(248, 113, 113, 0.45) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(248, 113, 113, 0.15) !important;
+  animation: game-timer-urgent-hero-pulse 1s ease-in-out infinite;
+}
+
+.pregame-banner--urgent .pregame-label {
+  color: #fecaca;
+}
+
+.pregame-banner--urgent .pregame-clock {
+  color: #fecaca !important;
+  text-shadow:
+    0 0 28px rgba(252, 165, 165, 0.45),
+    0 0 56px rgba(239, 68, 68, 0.3) !important;
+  animation: game-timer-urgent-clock-blink 1s ease-in-out infinite;
+}
+
+.pregame-banner--urgent .pregame-sub {
+  color: #fca5a5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pregame-banner--urgent {
+    animation: none;
+  }
+
+  .pregame-banner--urgent .pregame-clock {
+    animation: none;
+  }
+}
+
 .teams {
   display: flex;
   flex-direction: column;
@@ -479,6 +518,70 @@ body {
   text-shadow:
     0 0 36px var(--team-b-glow),
     0 0 72px rgba(255, 75, 160, 0.45);
+}
+
+/* Last 10s: red zone + clock pulse each second (voice replaced by tick sound) */
+.game-timer-hero--urgent {
+  background: linear-gradient(
+    180deg,
+    rgba(239, 68, 68, 0.28) 0%,
+    rgba(185, 28, 28, 0.12) 55%,
+    rgba(127, 29, 29, 0.06) 100%
+  ) !important;
+  box-shadow:
+    inset 0 -1px 0 rgba(248, 113, 113, 0.45),
+    inset 0 0 0 1px rgba(248, 113, 113, 0.2) !important;
+  animation: game-timer-urgent-hero-pulse 1s ease-in-out infinite;
+}
+
+.game-timer-hero--urgent .game-timer-kicker,
+.game-timer-hero--urgent .game-timer-turn-name {
+  color: #fecaca !important;
+  text-shadow: 0 0 24px rgba(248, 113, 113, 0.55) !important;
+}
+
+.game-timer-hero--urgent .game-timer-clock {
+  color: #fecaca !important;
+  text-shadow:
+    0 0 40px rgba(252, 165, 165, 0.55),
+    0 0 80px rgba(239, 68, 68, 0.35) !important;
+  animation: game-timer-urgent-clock-blink 1s ease-in-out infinite;
+}
+
+.game-timer-hero--urgent .game-timer-status {
+  color: #fca5a5;
+}
+
+@keyframes game-timer-urgent-hero-pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.08);
+  }
+}
+
+@keyframes game-timer-urgent-clock-blink {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.82;
+    transform: scale(0.992);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-timer-hero--urgent {
+    animation: none;
+  }
+
+  .game-timer-hero--urgent .game-timer-clock {
+    animation: none;
+  }
 }
 
 .game-timer-eyebrow {
