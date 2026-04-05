@@ -1,5 +1,6 @@
 "use client";
 
+import { Howl } from "howler";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Team = "A" | "B";
@@ -16,24 +17,43 @@ function formatTime(totalSeconds: number) {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-/** Schedule a short beep — must run with a running AudioContext (primed via user gesture on iOS). */
-function scheduleUrgentBeep(ctx: AudioContext) {
-  const t0 = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "sine";
-  osc.frequency.value = 880;
-  gain.gain.setValueAtTime(0.0001, t0);
-  gain.gain.linearRampToValueAtTime(0.1, t0 + 0.004);
-  gain.gain.linearRampToValueAtTime(0.0001, t0 + 0.072);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  try {
-    osc.start(t0);
-    osc.stop(t0 + 0.085);
-  } catch {
-    /* ignore */
+/** Programmatically build a short 880 Hz beep as a WAV blob URL (no static assets needed). */
+let _beepBlobUrl: string | null = null;
+function getBeepBlobUrl(): string {
+  if (_beepBlobUrl) return _beepBlobUrl;
+  const sr = 22050;
+  const dur = 0.09;
+  const freq = 880;
+  const vol = 0.35;
+  const n = Math.floor(sr * dur);
+  const dLen = n * 2;
+  const ab = new ArrayBuffer(44 + dLen);
+  const dv = new DataView(ab);
+  const ws = (o: number, s: string) => {
+    for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i));
+  };
+  ws(0, "RIFF");
+  dv.setUint32(4, 36 + dLen, true);
+  ws(8, "WAVE");
+  ws(12, "fmt ");
+  dv.setUint32(16, 16, true);
+  dv.setUint16(20, 1, true);
+  dv.setUint16(22, 1, true);
+  dv.setUint32(24, sr, true);
+  dv.setUint32(28, sr * 2, true);
+  dv.setUint16(32, 2, true);
+  dv.setUint16(34, 16, true);
+  ws(36, "data");
+  dv.setUint32(40, dLen, true);
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const fadeIn = Math.min(1, i / (sr * 0.005));
+    const fadeOut = Math.min(1, (n - i) / (sr * 0.012));
+    const sample = Math.sin(2 * Math.PI * freq * t) * fadeIn * fadeOut * vol;
+    dv.setInt16(44 + i * 2, Math.round(sample * 32767), true);
   }
+  _beepBlobUrl = URL.createObjectURL(new Blob([ab], { type: "audio/wav" }));
+  return _beepBlobUrl;
 }
 
 function IconPlay() {
@@ -118,13 +138,12 @@ export default function Page() {
   const [showSettings, setShowSettings] = useState(false);
 
   const lastTickRef = useRef<number | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
+  const beepRef = useRef<Howl | null>(null);
   const pregameLastUrgentSecRef = useRef<number | null>(null);
   const turnLastUrgentSecRef = useRef<number | null>(null);
   const pregameEndAnnouncedRef = useRef(false);
   const pregameMarksAnnouncedRef = useRef<Set<number>>(new Set());
   const turnMarksAnnouncedRef = useRef<Set<number>>(new Set());
-  /** After each reset, alternate who leads the next round (default Boys = A, first reset → Girls = B, …). */
   const nextStarterAfterResetRef = useRef<Team>("B");
 
   const teamName = useCallback(
@@ -163,73 +182,22 @@ export default function Page() {
     window.speechSynthesis.speak(u);
   }, []);
 
-  /**
-   * iOS Safari / Chrome (WebKit): audio must be unlocked synchronously inside the tap handler.
-   * `await ctx.resume()` runs after the gesture ends — WebKit then blocks timer-driven beeps.
-   * Pattern: resume() without awaiting + play a 1-frame silent buffer in the same synchronous stack.
-   */
-  const primeWebAudioFromUserGesture = useCallback(() => {
-    if (typeof window === "undefined") return;
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    if (!audioCtxRef.current) {
-      try {
-        audioCtxRef.current = new Ctx({ latencyHint: "interactive" });
-      } catch {
-        return;
-      }
-    }
-    const ctx = audioCtxRef.current;
-    try {
-      void ctx.resume();
-    } catch {
-      /* ignore */
-    }
-    try {
-      const buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
-      const src = ctx.createBufferSource();
-      src.buffer = buffer;
-      src.connect(ctx.destination);
-      src.start(0);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  /** Fallback for non‑iOS paths if context not yet running when the timer fires. */
-  const ensureAudioContextRunning = useCallback(async (): Promise<AudioContext | null> => {
-    if (typeof window === "undefined") return null;
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return null;
-    if (!audioCtxRef.current) {
-      try {
-        audioCtxRef.current = new Ctx({ latencyHint: "interactive" });
-      } catch {
-        return null;
-      }
-    }
-    const ctx = audioCtxRef.current;
-    if (ctx.state === "suspended") {
-      try {
-        await ctx.resume();
-      } catch {
-        return null;
-      }
-    }
-    return ctx.state === "running" ? ctx : null;
+  /** Howler.js handles iOS audio unlocking, context suspension, and re-activation internally. */
+  useEffect(() => {
+    beepRef.current = new Howl({
+      src: [getBeepBlobUrl()],
+      format: ["wav"],
+      volume: 0.45,
+      preload: true,
+    });
+    return () => {
+      beepRef.current?.unload();
+    };
   }, []);
 
   const playLastTenTick = useCallback(() => {
-    const ctx = audioCtxRef.current;
-    if (ctx?.state === "running") {
-      scheduleUrgentBeep(ctx);
-      return;
-    }
-    void (async () => {
-      const c = await ensureAudioContextRunning();
-      if (c) scheduleUrgentBeep(c);
-    })();
-  }, [ensureAudioContextRunning]);
+    beepRef.current?.play();
+  }, []);
 
   const pushLog = useCallback(
     (message: string, say = false) => {
@@ -294,26 +262,6 @@ export default function Page() {
     return () => window.clearInterval(id);
   }, [updateRunningTime, updatePregameTime]);
 
-  /** Tab backgrounding suspends AudioContext on many mobile browsers — resume when visible. */
-  useEffect(() => {
-    const onVisibility = () => {
-      if (document.visibilityState !== "visible") return;
-      const ctx = audioCtxRef.current;
-      if (ctx?.state === "suspended") void ctx.resume().catch(() => {});
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
-
-  /** iOS: first touch anywhere must run the sync unlock if the user didn’t hit a control yet. */
-  useEffect(() => {
-    const unlock = () => {
-      primeWebAudioFromUserGesture();
-      window.removeEventListener("pointerdown", unlock, true);
-    };
-    window.addEventListener("pointerdown", unlock, true);
-    return () => window.removeEventListener("pointerdown", unlock, true);
-  }, [primeWebAudioFromUserGesture]);
 
   useEffect(() => {
     if (state !== "pregame" || pregameRemaining > 0) return;
@@ -431,7 +379,6 @@ export default function Page() {
 
   const finishTurn = useCallback(() => {
     if (state === "ended" || state === "idle") return;
-    primeWebAudioFromUserGesture();
 
     if (state === "pregame" || state === "pregame_paused") {
       turnMarksAnnouncedRef.current = new Set();
@@ -454,10 +401,9 @@ export default function Page() {
     setState("running");
     lastTickRef.current = performance.now();
     pushLog(`It's ${teamName(nextTeam)}'s turn.`, true);
-  }, [state, currentTeam, minutes, seconds, pushLog, updateRunningTime, teamName, primeWebAudioFromUserGesture]);
+  }, [state, currentTeam, minutes, seconds, pushLog, updateRunningTime, teamName]);
 
   const resetGame = useCallback(() => {
-    primeWebAudioFromUserGesture();
     const total = Math.max(1, minutes * 60 + seconds);
     setTimeA(total);
     setTimeB(total);
@@ -470,14 +416,13 @@ export default function Page() {
     setCurrentTeam(starter);
     setState("idle");
     lastTickRef.current = null;
-  }, [minutes, seconds, pushLog, teamName, primeWebAudioFromUserGesture]);
+  }, [minutes, seconds, pushLog, teamName]);
 
   const newGame = useCallback(() => {
-    primeWebAudioFromUserGesture();
     setScoreA(0);
     setScoreB(0);
     resetGame();
-  }, [resetGame, primeWebAudioFromUserGesture]);
+  }, [resetGame]);
 
   const applyTime = useCallback(() => {
     const total = Math.max(1, minutes * 60 + seconds);
@@ -515,7 +460,6 @@ export default function Page() {
     state === "pregame" && pregameSecondsCeil <= 10 && pregameSecondsCeil >= 1;
 
   const onPrimary = () => {
-    primeWebAudioFromUserGesture();
     if (state === "ended") return;
     if (state === "running" || state === "pregame") stopGame();
     else startGame();
